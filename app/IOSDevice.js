@@ -1,5 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
+const BREAKPOINT = 700;
+
 export function IOSStatusBar({ dark = false, time = '9:41' }) {
   const c = dark ? '#fff' : '#000';
   return (
@@ -29,7 +33,7 @@ export function IOSStatusBar({ dark = false, time = '9:41' }) {
   );
 }
 
-export default function IOSDevice({ children, width = 402, height = 874, dark = false }) {
+function BezeledFrame({ children, width, height, dark }) {
   return (
     <div style={{ width, height, borderRadius:48, overflow:'hidden', position:'relative', background: dark ? '#000' : '#F2F2F7', boxShadow:'0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)', fontFamily:'-apple-system, system-ui, sans-serif', WebkitFontSmoothing:'antialiased' }}>
       <div style={{ position:'absolute', top:11, left:'50%', transform:'translateX(-50%)', width:126, height:37, borderRadius:24, background:'#000', zIndex:50 }} />
@@ -44,4 +48,47 @@ export default function IOSDevice({ children, width = 402, height = 874, dark = 
       </div>
     </div>
   );
+}
+
+function NativeFrame({ children, dark }) {
+  return (
+    <div style={{
+      width: '100vw',
+      minHeight: '100vh',
+      minHeight: '100dvh',
+      position: 'relative',
+      background: dark ? '#000' : '#faf7f2',
+      overflow: 'hidden',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+      paddingTop: 'env(safe-area-inset-top)',
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      paddingLeft: 'env(safe-area-inset-left)',
+      paddingRight: 'env(safe-area-inset-right)',
+      boxSizing: 'border-box',
+    }}>
+      <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function IOSDevice({ children, width = 402, height = 874, dark = false }) {
+  const [mounted, setMounted] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const check = () => setIsNarrow(window.innerWidth < BREAKPOINT);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Until mounted, render the bezeled frame (matches SSR default to avoid hydration mismatch).
+  if (!mounted || !isNarrow) {
+    return <BezeledFrame width={width} height={height} dark={dark}>{children}</BezeledFrame>;
+  }
+  return <NativeFrame dark={dark}>{children}</NativeFrame>;
 }

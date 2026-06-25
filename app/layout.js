@@ -6,6 +6,13 @@ export const metadata = {
   description: 'SRA color level tracker',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#faf7f2',
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">

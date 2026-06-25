@@ -336,7 +336,7 @@ export default function Page() {
   );
 
   return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-start', padding:'24px 12px', minHeight:'100vh' }}>
+    <div className="app-shell">
       <IOSDevice>
         <div style={themeStyle}>
           {/* HOME */}

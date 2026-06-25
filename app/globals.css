@@ -1,6 +1,15 @@
 html, body { margin: 0; padding: 0; background: #ece8e0; font-family: 'Inter', -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100%; }
 * { box-sizing: border-box; }
 
+/* Desktop: center the iOS bezel preview on a neutral page background. */
+.app-shell { display: flex; justify-content: center; align-items: flex-start; padding: 24px 12px; min-height: 100vh; }
+
+/* Mobile: drop the padding so the app fills the viewport edge-to-edge. */
+@media (max-width: 699px) {
+  html, body { background: #faf7f2; }
+  .app-shell { padding: 0; min-height: 100dvh; align-items: stretch; }
+}
+
 @keyframes sra-pulse   { 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.06); opacity:.85; } }
 @keyframes sra-shimmer { 0%{ transform:translateX(-100%);} 100%{ transform:translateX(100%);} }
 @keyframes sra-rise    { 0%{ transform:translateY(8px); opacity:0; } 100%{ transform:translateY(0); opacity:1; } }
