@@ -120,6 +120,12 @@ export default function Page() {
     (async () => {
       try {
         const r = await fetch('/api/me', { credentials: 'same-origin' });
+        if (r.status === 401) {
+          // Server says this session no longer maps to a real user
+          // (account deleted while the JWT was still valid). Force a clean sign-out.
+          await signOut({ callbackUrl: '/login' });
+          return;
+        }
         if (!r.ok) return;
         const j = await r.json();
         if (!alive || !j.user) return;
