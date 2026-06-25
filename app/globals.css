@@ -1,0 +1,18 @@
+html, body { margin: 0; padding: 0; background: #ece8e0; font-family: 'Inter', -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100%; }
+* { box-sizing: border-box; }
+
+@keyframes sra-pulse   { 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.06); opacity:.85; } }
+@keyframes sra-shimmer { 0%{ transform:translateX(-100%);} 100%{ transform:translateX(100%);} }
+@keyframes sra-rise    { 0%{ transform:translateY(8px); opacity:0; } 100%{ transform:translateY(0); opacity:1; } }
+@keyframes sra-pop     { 0%{ transform:scale(.4); opacity:0; } 60%{ transform:scale(1.1); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+@keyframes sra-confetti{ 0%{ transform:translate(0,0) rotate(0); opacity:1; } 100%{ transform:translate(var(--dx), 480px) rotate(720deg); opacity:0; } }
+@keyframes sra-glow    { 0%,100%{ box-shadow:0 8px 24px rgba(0,0,0,.10); } 50%{ box-shadow:0 12px 34px rgba(0,0,0,.18); } }
+@keyframes sra-fadeIn  { from{ opacity:0;} to{ opacity:1;} }
+@keyframes sra-slideUp { from{ transform:translateY(100%);} to{ transform:translateY(0);} }
+
+.scroll-hide::-webkit-scrollbar { display: none; }
+.scroll-hide { scrollbar-width: none; }
+
+input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: #ece6db; outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); cursor: pointer; }
+input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); cursor: pointer; }
