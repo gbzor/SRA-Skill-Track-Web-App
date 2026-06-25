@@ -24,14 +24,22 @@ export async function POST(req) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, password, name } = parsed.data;
+  const { email, password, name, currentRung, pbToNext } = parsed.data;
 
-  // Don't disclose whether the email exists. Always do a constant amount of work,
+  // Don't disclose whether the email exists. Always do constant work,
   // and return the same status on either branch.
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   const passwordHash = await bcrypt.hash(password, 12);
   if (!existing) {
-    await prisma.user.create({ data: { email, passwordHash, name: name ?? null } });
+    await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name: name ?? null,
+        currentRung,
+        pbToNext,
+      },
+    });
   }
   return json({ ok: true }, { status: 201 });
 }

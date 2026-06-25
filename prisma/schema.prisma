@@ -13,6 +13,8 @@ model User {
   email        String   @unique
   passwordHash String
   name         String?
+  currentRung  Int      @default(1)
+  pbToNext     Int      @default(20)
   createdAt    DateTime @default(now())
   reports      Report[]
 

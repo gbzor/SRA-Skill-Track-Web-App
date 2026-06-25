@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import IOSDevice from './IOSDevice';
+import { xpFromPbToNext } from '../lib/ladder';
 
 const LADDER = [
   { code:'1C', name:'Rose',   hex:'#c96d8a' },
@@ -113,6 +114,21 @@ export default function Page() {
   const [showReminder, setShowReminder] = useState(true);
   const [reports, setReports] = useState(INITIAL_REPORTS);
   const { data: session } = useSession();
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/me', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!alive || !j.user) return;
+        if (typeof j.user.currentRung === 'number') setCurrentRung(j.user.currentRung);
+        if (typeof j.user.pbToNext === 'number') setXp(xpFromPbToNext(j.user.pbToNext));
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
