@@ -173,6 +173,76 @@ export default function Page() {
   const [activeGuideIdx, setActiveGuideIdx] = useState(-1);
   const [levelUpShown, setLevelUpShown] = useState(false);
 
+  // Account menu + edit account sheet
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [editAccountOpen, setEditAccountOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCurrentPw, setEditCurrentPw] = useState('');
+  const [editNewPw, setEditNewPw] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const [editErr, setEditErr] = useState('');
+  const [editOk, setEditOk] = useState('');
+
+  const openEditAccount = () => {
+    setEditName(session?.user?.name || '');
+    setEditCurrentPw('');
+    setEditNewPw('');
+    setEditErr('');
+    setEditOk('');
+    setAccountMenuOpen(false);
+    setEditAccountOpen(true);
+  };
+
+  const closeEditAccount = () => {
+    setEditAccountOpen(false);
+    setEditErr('');
+    setEditOk('');
+  };
+
+  const saveAccount = async () => {
+    setEditBusy(true);
+    setEditErr('');
+    setEditOk('');
+    const body = {};
+    const newName = editName.trim();
+    const currentName = (session?.user?.name || '').trim();
+    if (newName && newName !== currentName) body.name = newName;
+    if (editNewPw) {
+      body.currentPassword = editCurrentPw;
+      body.newPassword = editNewPw;
+    }
+    if (Object.keys(body).length === 0) {
+      setEditErr('Nothing to update.');
+      setEditBusy(false);
+      return;
+    }
+    try {
+      const r = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (j?.error === 'current password is incorrect') setEditErr('Current password is incorrect.');
+        else if (j?.issues) setEditErr('Check inputs: new password needs 12+ chars, upper, lower, digit.');
+        else setEditErr(j?.error || 'Could not save changes.');
+        setEditBusy(false);
+        return;
+      }
+      setEditOk('Saved.');
+      setEditCurrentPw('');
+      setEditNewPw('');
+      setEditBusy(false);
+      // Reload so the session name + greeting refresh.
+      setTimeout(() => { window.location.reload(); }, 700);
+    } catch {
+      setEditErr('Network error. Try again.');
+      setEditBusy(false);
+    }
+  };
+
   const goHome   = () => setScreen('home');
   const goGuide  = () => setScreen('guide');
   const goLadder = () => setScreen('ladder');
@@ -366,7 +436,7 @@ export default function Page() {
             <div className="scroll-hide" style={{ position:'absolute', inset:0, paddingTop:54, paddingBottom:96, overflowY:'auto', animation:'sra-fadeIn .3s' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 20px 18px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <div onClick={() => signOut({ callbackUrl: '/login' })} title="Sign out" style={{ width:38, height:38, borderRadius:'50%', background:`linear-gradient(135deg,${v.accent},${v.accentDark})`, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:14, cursor:'pointer' }}>
+                  <div onClick={() => setAccountMenuOpen(o => !o)} title="Account" style={{ width:38, height:38, borderRadius:'50%', background:`linear-gradient(135deg,${v.accent},${v.accentDark})`, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, fontSize:14, cursor:'pointer' }}>
                     {(session?.user?.name || session?.user?.email || 'M').trim().charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -933,6 +1003,107 @@ export default function Page() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ACCOUNT MENU POPOVER */}
+          {accountMenuOpen && (
+            <>
+              <div onClick={() => setAccountMenuOpen(false)} style={{ position:'absolute', inset:0, zIndex:80 }} />
+              <div style={{ position:'absolute', top:62, left:20, zIndex:90, background:'#fff', border:'1px solid #ece6db', borderRadius:14, boxShadow:'0 12px 30px rgba(0,0,0,.14)', minWidth:180, overflow:'hidden', animation:'sra-fadeIn .15s' }}>
+                <div style={{ padding:'12px 14px 8px', borderBottom:'1px solid #f4efe6' }}>
+                  <div style={{ fontSize:10, color:'#8a8175', letterSpacing:.6, textTransform:'uppercase', fontWeight:600 }}>Signed in as</div>
+                  <div style={{ fontSize:13, fontWeight:600, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {session?.user?.email || ''}
+                  </div>
+                </div>
+                <div onClick={openEditAccount} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer', fontSize:13, fontWeight:500 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <span>Edit account</span>
+                </div>
+                <div onClick={() => { setAccountMenuOpen(false); signOut({ callbackUrl: '/login' }); }} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer', fontSize:13, fontWeight:500, color:'#a63b25', borderTop:'1px solid #f4efe6' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a63b25" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                  <span>Log out</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* EDIT ACCOUNT SHEET */}
+          {editAccountOpen && (
+            <>
+              <div onClick={closeEditAccount} style={{ position:'absolute', inset:0, background:'rgba(20,15,10,.4)', zIndex:90, animation:'sra-fadeIn .25s', backdropFilter:'blur(2px)' }}/>
+              <div className="scroll-hide" style={{ position:'absolute', left:0, right:0, bottom:0, zIndex:100, background:'#faf7f2', borderRadius:'28px 28px 0 0', padding:'14px 0 28px', animation:'sra-slideUp .35s cubic-bezier(.2,.8,.2,1)', boxShadow:'0 -12px 40px rgba(0,0,0,.18)', maxHeight:'92%', overflowY:'auto' }}>
+                <div style={{ display:'flex', justifyContent:'center' }}><div style={{ width:40, height:4, borderRadius:2, background:'#e0d8c8' }}/></div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 24px 6px' }}>
+                  <div>
+                    <div style={{ fontSize:10, letterSpacing:1, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Account</div>
+                    <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:26, lineHeight:1.1, marginTop:2, letterSpacing:'-.3px' }}>Edit your profile</div>
+                  </div>
+                  <div onClick={closeEditAccount} style={{ width:32, height:32, borderRadius:'50%', background:'#ece6db', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M6 18L18 6"/></svg>
+                  </div>
+                </div>
+
+                <div style={{ padding:'14px 24px 0' }}>
+                  <div style={{ fontSize:11, color:'#8a8175', letterSpacing:.5, textTransform:'uppercase', fontWeight:600 }}>Email</div>
+                  <div style={{ fontSize:14, color:'#1a1a1a', marginTop:4, padding:'10px 12px', background:'#f4efe6', borderRadius:10, border:'1px solid #ece6db' }}>
+                    {session?.user?.email || '—'}
+                  </div>
+                  <div style={{ fontSize:10, color:'#8a8175', marginTop:6 }}>Email cannot be changed.</div>
+
+                  <div style={{ fontSize:11, color:'#8a8175', letterSpacing:.5, textTransform:'uppercase', fontWeight:600, marginTop:18 }}>Name</div>
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    maxLength={80}
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    style={{ display:'block', width:'100%', marginTop:6, padding:'12px 14px', borderRadius:12, border:'1px solid #ece6db', background:'#fff', fontSize:15, outline:'none', boxSizing:'border-box' }}
+                  />
+
+                  <div style={{ fontSize:11, color:'#8a8175', letterSpacing:.5, textTransform:'uppercase', fontWeight:600, marginTop:22 }}>Change password</div>
+                  <div style={{ fontSize:11, color:'#8a8175', marginTop:4 }}>Leave both blank to keep your current password.</div>
+
+                  <input
+                    type="password"
+                    placeholder="Current password"
+                    autoComplete="current-password"
+                    maxLength={128}
+                    value={editCurrentPw}
+                    onChange={e => setEditCurrentPw(e.target.value)}
+                    style={{ display:'block', width:'100%', marginTop:10, padding:'12px 14px', borderRadius:12, border:'1px solid #ece6db', background:'#fff', fontSize:15, outline:'none', boxSizing:'border-box' }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="New password (12+ chars, upper, lower, digit)"
+                    autoComplete="new-password"
+                    minLength={12}
+                    maxLength={128}
+                    value={editNewPw}
+                    onChange={e => setEditNewPw(e.target.value)}
+                    style={{ display:'block', width:'100%', marginTop:10, padding:'12px 14px', borderRadius:12, border:'1px solid #ece6db', background:'#fff', fontSize:15, outline:'none', boxSizing:'border-box' }}
+                  />
+
+                  {editErr && (
+                    <div style={{ marginTop:14, padding:'10px 12px', background:'#fef0ee', border:'1px solid #f3cdc3', borderRadius:10, color:'#a63b25', fontSize:13 }}>
+                      {editErr}
+                    </div>
+                  )}
+                  {editOk && (
+                    <div style={{ marginTop:14, padding:'10px 12px', background:'#eef7ed', border:'1px solid #cce0c8', borderRadius:10, color:'#3a6f3a', fontSize:13 }}>
+                      {editOk}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ padding:'20px 20px 0', display:'flex', gap:10 }}>
+                  <div onClick={closeEditAccount} style={{ flex:'0 0 auto', padding:'14px 22px', background:'#ece6db', color:'#1a1a1a', borderRadius:16, fontSize:14, fontWeight:600, cursor:'pointer' }}>Cancel</div>
+                  <div onClick={editBusy ? undefined : saveAccount} style={{ flex:1, padding:14, background: editBusy ? '#4a443c' : '#1a1a1a', color:'#fff', borderRadius:16, textAlign:'center', fontSize:14, fontWeight:600, cursor: editBusy ? 'default' : 'pointer' }}>
+                    {editBusy ? 'Saving…' : 'Save changes'}
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </IOSDevice>
