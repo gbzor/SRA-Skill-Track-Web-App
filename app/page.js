@@ -174,6 +174,7 @@ export default function Page() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [activeGuideIdx, setActiveGuideIdx] = useState(-1);
   const [levelUpShown, setLevelUpShown] = useState(false);
+  const [levelUpFrom, setLevelUpFrom] = useState(null);
 
   const goAccount = () => router.push('/account');
 
@@ -199,8 +200,9 @@ export default function Page() {
     const earn = reportXpVal();
     // XP is recomputed server-side; client value is display-only.
     const payload = { period: reportPeriod, pb: reportPB, score: reportScore, rate: reportRate, colorIdx: reportColorIdx };
-    let serverId = null;
-    let serverXp = null;
+    const prevRung = currentRung;
+    let serverReport = null;
+    let serverUser = null;
     try {
       const r = await fetch('/api/reports', {
         method: 'POST',
@@ -208,19 +210,37 @@ export default function Page() {
         credentials: 'same-origin',
         body: JSON.stringify(payload),
       });
-      if (r.ok) { const j = await r.json(); serverId = j?.report?.id ?? null; serverXp = j?.report?.xp ?? null; }
+      if (r.ok) { const j = await r.json(); serverReport = j?.report ?? null; serverUser = j?.user ?? null; }
     } catch {}
-    const actualEarn = serverXp ?? earn;
-    const rep = { id: serverId ?? `local-${Date.now()}`, period: reportPeriod, pb: reportPB, score: reportScore, rate: reportRate, colorIdx: reportColorIdx, when: 'Just now', xp: actualEarn };
-    let newXp = xp + actualEarn;
-    let newRung = currentRung;
-    let lvlUp = false;
-    if (newXp >= 500 && newRung < LADDER.length) { newXp -= 500; newRung += 1; lvlUp = true; }
+
+    const rep = {
+      id: serverReport?.id ?? `local-${Date.now()}`,
+      period: reportPeriod, pb: reportPB, score: reportScore, rate: reportRate, colorIdx: reportColorIdx,
+      when: 'Just now',
+      xp: serverReport?.xp ?? earn,
+    };
     setReports(r => [rep, ...r]);
-    setXp(newXp);
-    setCurrentRung(newRung);
+
+    if (serverUser) {
+      // The server owns ladder progress — mirror its result so a refresh stays consistent.
+      setCurrentRung(serverUser.currentRung);
+      setXp(xpFromPbToNext(serverUser.pbToNext));
+      if (serverUser.currentRung > prevRung) {
+        setLevelUpFrom(prevRung);
+        setLevelUpShown(true);
+      }
+    } else {
+      // Request failed (offline): optimistic local update so the UI still responds.
+      let newXp = xp + rep.xp;
+      let newRung = currentRung;
+      let lvlUp = false;
+      while (newXp >= 500 && newRung < LADDER.length) { newXp -= 500; newRung += 1; lvlUp = true; }
+      setXp(newXp);
+      setCurrentRung(newRung);
+      if (lvlUp) { setLevelUpFrom(prevRung); setLevelUpShown(true); }
+    }
+
     setReportOpen(false);
-    setLevelUpShown(lvlUp);
     setShowReminder(false);
   };
 
@@ -313,7 +333,7 @@ export default function Page() {
     return {
       cur, accent, accentDark, accentLight, accentTint, accentBorder, accentShadow,
       nextColor: { ...nx, shadow: shadow(nx.hex), darker: darken(nx.hex, 55) },
-      currentColor: { ...cur, shadow: shadow(cur.hex) },
+      currentColor: { ...cur, shadow: shadow(cur.hex), darker: darken(cur.hex, 55) },
       xpPercent, xpRemaining, totalPB, avgScore, avgRate, recentReports,
       ladder, rungsRemaining,
       achievements, earnedCount, achTotal: ACHIEVEMENTS.length, totalBadgeXp,
@@ -910,9 +930,9 @@ export default function Page() {
             </>
           )}
 
-          {/* LEVEL UP OVERLAY */}
+          {/* LEVEL UP OVERLAY — shows the color just reached (the new current level). */}
           {levelUpShown && (
-            <div style={{ position:'absolute', inset:0, zIndex:200, background:`linear-gradient(180deg, ${v.nextColor.hex}, ${v.nextColor.darker})`, animation:'sra-fadeIn .4s', overflow:'hidden' }}>
+            <div style={{ position:'absolute', inset:0, zIndex:200, background:`linear-gradient(180deg, ${v.currentColor.hex}, ${v.currentColor.darker})`, animation:'sra-fadeIn .4s', overflow:'hidden' }}>
               <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
                 {confetti.map((p, i) => (
                   <div key={i} style={{ position:'absolute', top:'30%', left:`${p.left}%`, width:8, height:14, background:p.color, borderRadius:2, animation:`sra-confetti ${p.dur}s ease-out forwards`, animationDelay:`${p.delay}s`, '--dx':`${p.dx}px` }}/>
@@ -922,15 +942,15 @@ export default function Page() {
                 <div style={{ fontSize:11, letterSpacing:2.5, textTransform:'uppercase', fontWeight:700, opacity:.85, animation:'sra-rise .5s .1s both' }}>Level up</div>
                 <div style={{ margin:'30px 0', position:'relative', animation:'sra-pop .8s .2s cubic-bezier(.2,1.4,.5,1) both' }}>
                   <div style={{ width:140, height:140, borderRadius:40, background:'#fff', boxShadow:'0 24px 60px rgba(0,0,0,.25)', position:'relative' }}>
-                    <div style={{ position:'absolute', inset:14, borderRadius:28, background:v.nextColor.hex }}>
+                    <div style={{ position:'absolute', inset:14, borderRadius:28, background:v.currentColor.hex }}>
                       <div style={{ position:'absolute', inset:10, borderRadius:20, background:'linear-gradient(135deg,rgba(255,255,255,.4),transparent 55%)' }}/>
                     </div>
                   </div>
                   <div style={{ position:'absolute', inset:-14, borderRadius:54, border:'3px solid rgba(255,255,255,.4)', animation:'sra-pulse 2s ease-in-out infinite' }}/>
                 </div>
-                <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:64, lineHeight:1, letterSpacing:'-1px', animation:'sra-rise .5s .35s both' }}>{v.nextColor.name}</div>
+                <div style={{ fontFamily:"'Instrument Serif',serif", fontSize:64, lineHeight:1, letterSpacing:'-1px', animation:'sra-rise .5s .35s both' }}>{v.currentColor.name}</div>
                 <div style={{ fontSize:13, opacity:.85, marginTop:14, maxWidth:280, lineHeight:1.5, animation:'sra-rise .5s .5s both' }}>
-                  You reached level <strong>{v.nextColor.code}</strong>, up from <strong>{v.currentColor.name}</strong>. {v.rungsRemaining} rungs to 3A.
+                  You reached level <strong>{v.currentColor.code}</strong>{levelUpFrom ? <>, up from <strong>{LADDER[Math.max(0, levelUpFrom - 1)].name}</strong></> : null}. {v.rungsRemaining === 0 ? "You're at the top of the ladder!" : `${v.rungsRemaining} ${v.rungsRemaining === 1 ? 'rung' : 'rungs'} to 3A.`}
                 </div>
                 <div onClick={() => setLevelUpShown(false)} style={{ marginTop:40, padding:'16px 36px', background:'#fff', color:'#1a1a1a', borderRadius:999, fontSize:14, fontWeight:600, cursor:'pointer', animation:'sra-rise .5s .7s both', boxShadow:'0 8px 24px rgba(0,0,0,.18)' }}>
                   Keep climbing
