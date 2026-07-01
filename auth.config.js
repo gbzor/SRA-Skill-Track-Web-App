@@ -6,11 +6,15 @@ export const authConfig = {
   providers: [],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.uid = user.id;
+      if (user) {
+        token.uid = user.id;
+        token.tokenVersion = user.tokenVersion;
+      }
       return token;
     },
     session({ session, token }) {
       if (token?.uid) session.user.id = token.uid;
+      if (typeof token?.tokenVersion === 'number') session.user.tokenVersion = token.tokenVersion;
       return session;
     },
   },

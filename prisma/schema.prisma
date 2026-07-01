@@ -15,6 +15,10 @@ model User {
   name         String?
   currentRung  Int      @default(1)
   pbToNext     Int      @default(20)
+  // Bumped on password change; embedded in every issued JWT and compared on
+  // each request so a stolen session token is invalidated the moment the
+  // password is rotated, instead of staying valid until the 7-day JWT expiry.
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
   reports      Report[]
 

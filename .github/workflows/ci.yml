@@ -15,11 +15,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      # npm install (not npm ci) to match Vercel's own installCommand in vercel.json —
+      # keeps the lockfile self-healing against package.json rather than requiring a
+      # manually-regenerated lockfile to be committed in lockstep with every bump.
+      - run: npm install
       - name: Build
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           AUTH_SECRET: ci_dummy_secret_ci_dummy_secret_ci_dummy_
         run: npx next build
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high || true
+        run: npm audit --omit=dev --audit-level=high

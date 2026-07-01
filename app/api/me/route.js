@@ -51,6 +51,9 @@ export async function PATCH(req) {
     const ok = await bcrypt.compare(currentPassword, row.passwordHash);
     if (!ok) return json({ error: 'current password is incorrect' }, { status: 400 });
     data.passwordHash = await bcrypt.hash(newPassword, 12);
+    // Revoke every outstanding session (including a stolen one) the moment the
+    // password changes, rather than letting old JWTs stay valid for 7 more days.
+    data.tokenVersion = { increment: 1 };
   }
 
   if (name !== undefined && name !== user.name) {

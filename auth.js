@@ -24,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const placeholder = '$2a$12$CwTycUXWue0Thq9StjUM0uJ8.fOkP6OpO5dY7s7Du5e1A1zCqXh7e';
           const ok = await bcrypt.compare(password, user?.passwordHash ?? placeholder);
           if (!user || !ok) return null;
-          return { id: user.id, email: user.email, name: user.name ?? undefined };
+          return { id: user.id, email: user.email, name: user.name ?? undefined, tokenVersion: user.tokenVersion };
         } catch {
           // Never leak DB/runtime errors to the credentials response.
           return null;
