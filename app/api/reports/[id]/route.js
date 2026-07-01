@@ -14,7 +14,8 @@ export async function DELETE(req, { params }) {
   const rl = await check('write', user.id);
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  const id = String(params?.id || '');
+  const resolvedParams = await params;
+  const id = String(resolvedParams?.id || '');
   if (!/^c[a-z0-9]{20,30}$/i.test(id)) {
     return json({ error: 'bad id' }, { status: 400 });
   }

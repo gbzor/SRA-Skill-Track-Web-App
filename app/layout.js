@@ -1,5 +1,13 @@
+import { headers } from 'next/headers';
 import './globals.css';
 import Providers from './Providers';
+
+// Nonce-based CSP (see middleware.js) needs a fresh nonce every request, which
+// requires dynamic rendering — reading headers() here (rather than only in
+// middleware) is what opts this layout, and everything under it, out of
+// static prerendering so Next.js can embed a matching nonce in its own
+// hydration bootstrap script each time instead of baking a stale one into a
+// cached static page.
 
 export const metadata = {
   title: 'SRA Tracker',
@@ -13,7 +21,10 @@ export const viewport = {
   themeColor: '#faf7f2',
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // eslint-disable-next-line no-unused-vars -- reading headers() forces dynamic rendering; see comment above
+  const nonce = (await headers()).get('x-nonce');
+
   return (
     <html lang="en">
       <head>
