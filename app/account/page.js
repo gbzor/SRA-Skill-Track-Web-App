@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import IOSDevice from '../IOSDevice';
 
 // Same color ladder as the home screen, so the account page picks up the
@@ -128,8 +128,13 @@ export default function AccountPage() {
         setPwBusy(false);
         return;
       }
+      // Changing the password revokes every outstanding session token,
+      // including this one — re-authenticate with the new password so the
+      // user who just changed it isn't immediately logged out by their own action.
+      const freshPw = newPw;
       setCurPw('');
       setNewPw('');
+      await signIn('credentials', { email: shownEmail, password: freshPw, redirect: false });
       setPwMsg({ ok: true, text: 'Password changed.' });
       setPwBusy(false);
     } catch {
