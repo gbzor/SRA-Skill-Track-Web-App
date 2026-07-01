@@ -21,9 +21,9 @@ export const viewport = {
   themeColor: '#faf7f2',
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
   // eslint-disable-next-line no-unused-vars -- reading headers() forces dynamic rendering; see comment above
-  const nonce = headers().get('x-nonce');
+  const nonce = (await headers()).get('x-nonce');
 
   return (
     <html lang="en">
