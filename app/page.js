@@ -50,17 +50,6 @@ const ACHIEVEMENTS = [
   { name:'Top of the Lab',desc:'Reach 3A — the final level',        color:'#8c5ca8', earned:false, prog:67,  progLabel:'2A / 3A · rung 6 / 9' },
 ];
 
-const INITIAL_REPORTS = [
-  { id:1, period:'daily',   pb:2,  score:9, rate:8, colorIdx:5, when:'Yesterday',  xp:32 },
-  { id:2, period:'weekly',  pb:8,  score:9, rate:7, colorIdx:5, when:'2d ago',     xp:130 },
-  { id:3, period:'daily',   pb:3,  score:8, rate:7, colorIdx:5, when:'4d ago',     xp:43 },
-  { id:4, period:'weekly',  pb:7,  score:9, rate:8, colorIdx:4, when:'Last week',  xp:113 },
-  { id:5, period:'daily',   pb:2,  score:8, rate:6, colorIdx:4, when:'8d ago',     xp:29 },
-  { id:6, period:'monthly', pb:24, score:9, rate:7, colorIdx:3, when:'Last month', xp:389 },
-  { id:7, period:'daily',   pb:3,  score:9, rate:7, colorIdx:3, when:'5w ago',     xp:49 },
-  { id:8, period:'weekly',  pb:6,  score:8, rate:7, colorIdx:2, when:'6w ago',     xp:86 },
-];
-
 const periodLabel = p => ({ daily:'Daily', weekly:'Weekly', monthly:'Monthly' }[p] || p);
 function relativeWhen(iso) {
   const d = new Date(iso); const now = Date.now(); const diff = (now - d.getTime()) / 1000;
@@ -102,11 +91,11 @@ export default function Page() {
   const [screen, setScreen] = useState('home');
   const [ladderTab, setLadderTab] = useState('climb');
   const [streak, setStreak] = useState(0);
-  const [currentRung, setCurrentRung] = useState(6);
-  const [xp, setXp] = useState(340);
+  const [currentRung, setCurrentRung] = useState(1);
+  const [xp, setXp] = useState(0);
   const [showReminder, setShowReminder] = useState(false);
   const [daysSinceReport, setDaysSinceReport] = useState(0);
-  const [reports, setReports] = useState(INITIAL_REPORTS);
+  const [reports, setReports] = useState([]);
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -144,8 +133,10 @@ export default function Page() {
         const r = await fetch('/api/reports', { credentials: 'same-origin' });
         if (!r.ok) return;
         const j = await r.json();
-        if (!alive || !Array.isArray(j.reports) || j.reports.length === 0) return;
-        const mapped = j.reports.map((rep, i) => ({
+        if (!alive || !Array.isArray(j.reports)) return;
+        // Always take the server's list verbatim — even when empty — so stats
+        // reflect the user's real reports and never fall back to sample data.
+        const mapped = j.reports.map((rep) => ({
           id: rep.id,
           period: rep.period,
           pb: rep.pb,
@@ -153,6 +144,7 @@ export default function Page() {
           rate: rep.rate,
           colorIdx: rep.colorIdx,
           xp: rep.xp,
+          ts: new Date(rep.createdAt).getTime(),
           when: relativeWhen(rep.createdAt),
         }));
         setReports(mapped);
@@ -243,6 +235,7 @@ export default function Page() {
     const rep = {
       id: serverReport?.id ?? `local-${Date.now()}`,
       period: reportPeriod, pb: reportPB, score: reportScore, rate: reportRate, colorIdx: reportColorIdx,
+      ts: serverReport?.createdAt ? new Date(serverReport.createdAt).getTime() : Date.now(),
       when: 'Just now',
       xp: serverReport?.xp ?? earn,
     };
@@ -289,11 +282,15 @@ export default function Page() {
     const xpPercent = Math.min(100, (xp / 500) * 100);
     const xpRemaining = Math.max(0, 500 - xp);
 
-    const weeklyReports = reports.filter(r => ['Yesterday','2d ago','4d ago','Just now'].includes(r.when) || r.when.includes('h ago'));
-    const totalPB = weeklyReports.reduce((a, r) => a + r.pb, 0) || reports[0].pb;
+    // Every stat below is derived purely from the user's real reports (1–10
+    // scale); with no reports these all resolve to 0 / empty rather than demo data.
+    const hasReports = reports.length > 0;
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const weeklyReports = reports.filter(r => (r.ts ?? 0) >= weekAgo);
+    const totalPB = weeklyReports.reduce((a, r) => a + r.pb, 0);
     const scored = reports.slice(0, 6);
-    const avgScore = Math.round(scored.reduce((a, r) => a + r.score, 0) / scored.length);
-    const avgRate = Math.round(scored.reduce((a, r) => a + r.rate, 0) / scored.length);
+    const avgScore = scored.length ? Math.round(scored.reduce((a, r) => a + r.score, 0) / scored.length) : 0;
+    const avgRate = scored.length ? Math.round(scored.reduce((a, r) => a + r.rate, 0) / scored.length) : 0;
     const recentReports = reports.slice(0, 3).map(r => ({ ...r, color: LADDER[r.colorIdx].hex, periodLabel: periodLabel(r.period) }));
 
     const curIdx = currentRung - 1;
@@ -340,7 +337,7 @@ export default function Page() {
       hex: r.score >= 8 ? 'var(--accent)' : 'var(--accent-light)',
       hex2: r.score >= 8 ? 'var(--accent-dark)' : 'var(--accent)',
     }));
-    const trendDelta = '+' + Math.max(0, trendSrc[trendSrc.length - 1].score - trendSrc[0].score) + ' pts';
+    const trendDelta = trendSrc.length ? '+' + Math.max(0, trendSrc[trendSrc.length - 1].score - trendSrc[0].score) + ' pts' : '';
     const allReports = reports.map(r => ({
       ...r,
       color: LADDER[r.colorIdx].hex,
@@ -363,6 +360,7 @@ export default function Page() {
       cur, accent, accentDark, accentLight, accentTint, accentBorder, accentShadow,
       nextColor: { ...nx, shadow: shadow(nx.hex), darker: darken(nx.hex, 55) },
       currentColor: { ...cur, shadow: shadow(cur.hex), darker: darken(cur.hex, 55) },
+      hasReports,
       xpPercent, xpRemaining, totalPB, avgScore, avgRate, recentReports,
       ladder, rungsRemaining,
       achievements, earnedCount, achTotal: ACHIEVEMENTS.length, totalBadgeXp,
@@ -537,6 +535,12 @@ export default function Page() {
                       </div>
                     </div>
                   ))}
+                  {!v.hasReports && (
+                    <div onClick={openReport} style={{ padding:'22px 16px', textAlign:'center', cursor:'pointer' }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1a1a1a' }}>No reports yet</div>
+                      <div style={{ fontSize:11, color:'#8a8175', marginTop:3 }}>Log your first Power Builder report to start tracking your stats.</div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ height:20 }}/>
@@ -730,15 +734,21 @@ export default function Page() {
                   <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Understanding trend</div>
                   <div style={{ fontSize:11, color:'var(--accent)', fontWeight:600 }}>{v.trendDelta}</div>
                 </div>
-                <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8, height:96 }}>
-                  {v.trend.map((t, i) => (
-                    <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:6, height:'100%', justifyContent:'flex-end' }}>
-                      <div style={{ fontSize:9, fontWeight:600, color:'#1a1a1a', fontVariantNumeric:'tabular-nums' }}>{t.score}</div>
-                      <div style={{ width:'100%', maxWidth:26, height:t.h, background:`linear-gradient(180deg,${t.hex},${t.hex2})`, borderRadius:7 }}/>
-                      <div style={{ fontSize:9, color:'#bdb5a6' }}>{t.label}</div>
-                    </div>
-                  ))}
-                </div>
+                {v.hasReports ? (
+                  <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8, height:96 }}>
+                    {v.trend.map((t, i) => (
+                      <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:6, height:'100%', justifyContent:'flex-end' }}>
+                        <div style={{ fontSize:9, fontWeight:600, color:'#1a1a1a', fontVariantNumeric:'tabular-nums' }}>{t.score}</div>
+                        <div style={{ width:'100%', maxWidth:26, height:t.h, background:`linear-gradient(180deg,${t.hex},${t.hex2})`, borderRadius:7 }}/>
+                        <div style={{ fontSize:9, color:'#bdb5a6' }}>{t.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ height:96, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#8a8175', textAlign:'center' }}>
+                    Log reports to see your understanding trend.
+                  </div>
+                )}
               </div>
 
               <div style={{ margin:'24px 20px 0' }}>
@@ -764,6 +774,11 @@ export default function Page() {
                       </div>
                     </div>
                   ))}
+                  {!v.hasReports && (
+                    <div style={{ padding:'22px 16px', textAlign:'center', fontSize:12, color:'#8a8175' }}>
+                      No reports logged yet.
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ height:20 }}/>
