@@ -51,14 +51,14 @@ const ACHIEVEMENTS = [
 ];
 
 const INITIAL_REPORTS = [
-  { id:1, period:'daily',   pb:2,  score:95, rate:230, colorIdx:5, when:'Yesterday',  xp:38 },
-  { id:2, period:'weekly',  pb:8,  score:88, rate:215, colorIdx:5, when:'2d ago',     xp:141 },
-  { id:3, period:'daily',   pb:3,  score:82, rate:205, colorIdx:5, when:'4d ago',     xp:49 },
-  { id:4, period:'weekly',  pb:7,  score:91, rate:220, colorIdx:4, when:'Last week',  xp:127 },
-  { id:5, period:'daily',   pb:2,  score:78, rate:195, colorIdx:4, when:'8d ago',     xp:31 },
-  { id:6, period:'monthly', pb:24, score:86, rate:210, colorIdx:3, when:'Last month', xp:413 },
-  { id:7, period:'daily',   pb:3,  score:90, rate:200, colorIdx:3, when:'5w ago',     xp:54 },
-  { id:8, period:'weekly',  pb:6,  score:84, rate:198, colorIdx:2, when:'6w ago',     xp:101 },
+  { id:1, period:'daily',   pb:2,  score:9, rate:8, colorIdx:5, when:'Yesterday',  xp:32 },
+  { id:2, period:'weekly',  pb:8,  score:9, rate:7, colorIdx:5, when:'2d ago',     xp:130 },
+  { id:3, period:'daily',   pb:3,  score:8, rate:7, colorIdx:5, when:'4d ago',     xp:43 },
+  { id:4, period:'weekly',  pb:7,  score:9, rate:8, colorIdx:4, when:'Last week',  xp:113 },
+  { id:5, period:'daily',   pb:2,  score:8, rate:6, colorIdx:4, when:'8d ago',     xp:29 },
+  { id:6, period:'monthly', pb:24, score:9, rate:7, colorIdx:3, when:'Last month', xp:389 },
+  { id:7, period:'daily',   pb:3,  score:9, rate:7, colorIdx:3, when:'5w ago',     xp:49 },
+  { id:8, period:'weekly',  pb:6,  score:8, rate:7, colorIdx:2, when:'6w ago',     xp:86 },
 ];
 
 const periodLabel = p => ({ daily:'Daily', weekly:'Weekly', monthly:'Monthly' }[p] || p);
@@ -182,8 +182,8 @@ export default function Page() {
   const [reportStep, setReportStep] = useState(1);
   const [reportPeriod, setReportPeriod] = useState('weekly');
   const [reportPB, setReportPB] = useState(5);
-  const [reportScore, setReportScore] = useState(85);
-  const [reportRate, setReportRate] = useState(215);
+  const [reportScore, setReportScore] = useState(7);
+  const [reportRate, setReportRate] = useState(7);
   const [reportColorIdx, setReportColorIdx] = useState(5);
 
   const [guideOpen, setGuideOpen] = useState(false);
@@ -221,7 +221,7 @@ export default function Page() {
   };
   const closeReport = () => setReportOpen(false);
 
-  const reportXpVal = () => Math.round(reportPB * (reportScore / 100) * 18);
+  const reportXpVal = () => Math.round(reportPB * (reportScore / 10) * 18);
 
   const submitReport = async () => {
     const earn = reportXpVal();
@@ -336,9 +336,9 @@ export default function Page() {
     const trend = trendSrc.map(r => ({
       score: r.score,
       label: periodLabel(r.period).slice(0, 1),
-      h: Math.round((r.score / 100) * 84) + 6,
-      hex: r.score >= 88 ? 'var(--accent)' : 'var(--accent-light)',
-      hex2: r.score >= 88 ? 'var(--accent-dark)' : 'var(--accent)',
+      h: Math.round((r.score / 10) * 84) + 6,
+      hex: r.score >= 8 ? 'var(--accent)' : 'var(--accent-light)',
+      hex2: r.score >= 8 ? 'var(--accent-dark)' : 'var(--accent)',
     }));
     const trendDelta = '+' + Math.max(0, trendSrc[trendSrc.length - 1].score - trendSrc[0].score) + ' pts';
     const allReports = reports.map(r => ({
@@ -369,8 +369,8 @@ export default function Page() {
       lifetimePB, trend, trendDelta, allReports,
       notifications, unreadCount,
       reportColor: rc,
-      reportXp: Math.round(reportPB * (reportScore / 100) * 18),
-      projectedTotal: Math.min(500, xp + Math.round(reportPB * (reportScore / 100) * 18)),
+      reportXp: Math.round(reportPB * (reportScore / 10) * 18),
+      projectedTotal: Math.min(500, xp + Math.round(reportPB * (reportScore / 10) * 18)),
     };
   }, [currentRung, xp, reports, notifs, reportPB, reportScore, reportColorIdx]);
 
@@ -501,17 +501,17 @@ export default function Page() {
                   </div>
                 </div>
                 <div style={{ background:'#fff', border:'1px solid #ece6db', borderRadius:18, padding:'14px 12px' }}>
-                  <div style={{ fontSize:10, letterSpacing:.5, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>Comprehension</div>
+                  <div style={{ fontSize:10, letterSpacing:.5, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>Understanding</div>
                   <div style={{ display:'flex', alignItems:'baseline', gap:1, marginTop:6 }}>
                     <div style={{ fontSize:24, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px', color:'var(--accent)' }}>{v.avgScore}</div>
-                    <div style={{ fontSize:13, color:'var(--accent)', fontWeight:700 }}>%</div>
+                    <div style={{ fontSize:13, color:'var(--accent)', fontWeight:700 }}>/10</div>
                   </div>
                 </div>
                 <div style={{ background:'#fff', border:'1px solid #ece6db', borderRadius:18, padding:'14px 12px' }}>
-                  <div style={{ fontSize:10, letterSpacing:.5, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>Reading rate</div>
+                  <div style={{ fontSize:10, letterSpacing:.5, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>Speed</div>
                   <div style={{ display:'flex', alignItems:'baseline', gap:2, marginTop:6 }}>
                     <div style={{ fontSize:24, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px' }}>{v.avgRate}</div>
-                    <div style={{ fontSize:10, color:'#8a8175' }}>wpm</div>
+                    <div style={{ fontSize:10, color:'#8a8175' }}>/10</div>
                   </div>
                 </div>
               </div>
@@ -529,7 +529,7 @@ export default function Page() {
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600 }}>{r.periodLabel} report</div>
-                        <div style={{ fontSize:11, color:'#8a8175', marginTop:2 }}>{r.pb} Power Builders · {r.score}% comp</div>
+                        <div style={{ fontSize:11, color:'#8a8175', marginTop:2 }}>{r.pb} Power Builders · {r.score}/10 understanding</div>
                       </div>
                       <div style={{ textAlign:'right', flexShrink:0 }}>
                         <div style={{ fontSize:13, fontWeight:600, color:'var(--accent)', fontVariantNumeric:'tabular-nums' }}>+{r.xp}</div>
@@ -716,18 +716,18 @@ export default function Page() {
                   <div style={{ fontSize:10, color:'#8a8175', marginTop:2 }}>Power Builders</div>
                 </div>
                 <div style={{ background:'#fff', border:'1px solid #ece6db', borderRadius:18, padding:'14px 12px' }}>
-                  <div style={{ fontSize:23, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px', color:'var(--accent)' }}>{v.avgScore}%</div>
-                  <div style={{ fontSize:10, color:'#8a8175', marginTop:2 }}>Avg comp.</div>
+                  <div style={{ fontSize:23, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px', color:'var(--accent)' }}>{v.avgScore}/10</div>
+                  <div style={{ fontSize:10, color:'#8a8175', marginTop:2 }}>Avg understanding</div>
                 </div>
                 <div style={{ background:'#fff', border:'1px solid #ece6db', borderRadius:18, padding:'14px 12px' }}>
-                  <div style={{ fontSize:23, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px' }}>{v.avgRate}</div>
-                  <div style={{ fontSize:10, color:'#8a8175', marginTop:2 }}>Avg WPM</div>
+                  <div style={{ fontSize:23, fontWeight:700, fontVariantNumeric:'tabular-nums', letterSpacing:'-.5px' }}>{v.avgRate}/10</div>
+                  <div style={{ fontSize:10, color:'#8a8175', marginTop:2 }}>Avg speed</div>
                 </div>
               </div>
 
               <div style={{ margin:'20px 20px 0', background:'#fff', border:'1px solid #ece6db', borderRadius:20, padding:18 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:16 }}>
-                  <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Comprehension trend</div>
+                  <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Understanding trend</div>
                   <div style={{ fontSize:11, color:'var(--accent)', fontWeight:600 }}>{v.trendDelta}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8, height:96 }}>
@@ -755,10 +755,10 @@ export default function Page() {
                             <div style={{ fontSize:13, fontWeight:600 }}>{r.periodLabel}</div>
                             <div style={{ fontSize:9, letterSpacing:.4, textTransform:'uppercase', fontWeight:600, color:r.color, background:r.tint, padding:'2px 6px', borderRadius:6 }}>{r.colorName}</div>
                           </div>
-                          <div style={{ fontSize:11, color:'#8a8175', marginTop:3 }}>{r.pb} Power Builders · {r.rate} wpm</div>
+                          <div style={{ fontSize:11, color:'#8a8175', marginTop:3 }}>{r.pb} Power Builders · speed {r.rate}/10</div>
                         </div>
                         <div style={{ textAlign:'right', flexShrink:0 }}>
-                          <div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', fontVariantNumeric:'tabular-nums' }}>{r.score}%</div>
+                          <div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', fontVariantNumeric:'tabular-nums' }}>{r.score}/10</div>
                           <div style={{ fontSize:10, color:'#bdb5a6' }}>{r.when}</div>
                         </div>
                       </div>
@@ -904,17 +904,25 @@ export default function Page() {
                       </div>
                     </div>
 
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:22 }}>
-                      <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Avg comprehension</div>
-                      <div style={{ fontSize:18, fontWeight:700, fontVariantNumeric:'tabular-nums', color:'var(--accent)' }}>{reportScore}%</div>
+                    <div style={{ marginTop:24 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1a1a1a', lineHeight:1.4 }}>How well did you understand the Power Builders?</div>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:10 }}>
+                        <div style={{ fontSize:10, color:'#bdb5a6' }}>Barely</div>
+                        <div style={{ fontSize:20, fontWeight:700, fontVariantNumeric:'tabular-nums', color:'var(--accent)' }}>{reportScore}<span style={{ fontSize:12, color:'#8a8175', fontWeight:500 }}>/10</span></div>
+                        <div style={{ fontSize:10, color:'#bdb5a6' }}>Fully</div>
+                      </div>
+                      <input type="range" min="1" max="10" step="1" value={reportScore} onChange={e => setReportScore(parseInt(e.target.value,10))} style={{ width:'100%', marginTop:6 }}/>
                     </div>
-                    <input type="range" min="0" max="100" step="1" value={reportScore} onChange={e => setReportScore(parseInt(e.target.value,10))} style={{ width:'100%', marginTop:8 }}/>
 
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:22 }}>
-                      <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600 }}>Reading rate</div>
-                      <div style={{ fontSize:18, fontWeight:700, fontVariantNumeric:'tabular-nums' }}>{reportRate}<span style={{ fontSize:12, color:'#8a8175', fontWeight:500, marginLeft:3 }}>wpm</span></div>
+                    <div style={{ marginTop:24 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1a1a1a', lineHeight:1.4 }}>How fast could you read and answer them?</div>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginTop:10 }}>
+                        <div style={{ fontSize:10, color:'#bdb5a6' }}>Slow</div>
+                        <div style={{ fontSize:20, fontWeight:700, fontVariantNumeric:'tabular-nums' }}>{reportRate}<span style={{ fontSize:12, color:'#8a8175', fontWeight:500 }}>/10</span></div>
+                        <div style={{ fontSize:10, color:'#bdb5a6' }}>Fast</div>
+                      </div>
+                      <input type="range" min="1" max="10" step="1" value={reportRate} onChange={e => setReportRate(parseInt(e.target.value,10))} style={{ width:'100%', marginTop:6 }}/>
                     </div>
-                    <input type="range" min="100" max="350" step="5" value={reportRate} onChange={e => setReportRate(parseInt(e.target.value,10))} style={{ width:'100%', marginTop:8 }}/>
 
                     <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:600, marginTop:22, marginBottom:10 }}>Color level practiced</div>
                     <div className="scroll-hide" style={{ display:'flex', gap:10, overflowX:'auto', paddingBottom:4 }}>
@@ -943,8 +951,8 @@ export default function Page() {
                     </div>
                     <div style={{ marginTop:20, padding:18, background:'#fff', border:'1px solid #ece6db', borderRadius:18 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 0' }}><div style={{ fontSize:12, color:'#8a8175' }}>Power Builders</div><div style={{ fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{reportPB}</div></div>
-                      <div style={{ display:'flex', justifyContent:'space-between', padding:'9px 0', borderTop:'1px solid #f4efe6', borderBottom:'1px solid #f4efe6', margin:'4px 0' }}><div style={{ fontSize:12, color:'#8a8175' }}>Comprehension</div><div style={{ fontSize:13, fontWeight:600, color:'#6fac6f' }}>{reportScore}%</div></div>
-                      <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 0' }}><div style={{ fontSize:12, color:'#8a8175' }}>Reading rate · Color</div><div style={{ fontSize:13, fontWeight:600 }}>{reportRate} wpm · {v.reportColor.name} · {v.reportColor.code}</div></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', padding:'9px 0', borderTop:'1px solid #f4efe6', borderBottom:'1px solid #f4efe6', margin:'4px 0' }}><div style={{ fontSize:12, color:'#8a8175' }}>Understanding</div><div style={{ fontSize:13, fontWeight:600, color:'#6fac6f' }}>{reportScore}/10</div></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 0' }}><div style={{ fontSize:12, color:'#8a8175' }}>Speed · Color</div><div style={{ fontSize:13, fontWeight:600 }}>{reportRate}/10 · {v.reportColor.name} · {v.reportColor.code}</div></div>
                       <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0 4px', marginTop:6, borderTop:'1px solid #f4efe6' }}><div style={{ fontSize:12, color:'#8a8175' }}>XP reward</div><div style={{ fontSize:15, fontWeight:700, color:'var(--accent)', fontVariantNumeric:'tabular-nums' }}>+{v.reportXp}</div></div>
                     </div>
                     <div style={{ marginTop:14, padding:'14px 16px', background:'#1a1a1a', color:'#fff', borderRadius:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
