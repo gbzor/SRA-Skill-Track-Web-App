@@ -74,7 +74,9 @@ export async function POST(req) {
   // Persist the report and advance the user's ladder progress together, so a
   // submitted report actually moves the account's level in the database.
   const next = advanceLadder(user.currentRung, user.pbToNext, parsed.data.pb);
-  const [report, updatedUser] = await prisma.$transaction([
+  const leveledUp = next.currentRung > user.currentRung;
+
+  const ops = [
     prisma.report.create({
       data: { ...parsed.data, xp, userId: user.id },
       select: SELECT,
@@ -84,7 +86,25 @@ export async function POST(req) {
       data: { currentRung: next.currentRung, pbToNext: next.pbToNext },
       select: { currentRung: true, pbToNext: true },
     }),
-  ]);
+  ];
+
+  // Real event → real notification: only when this report actually advanced a
+  // color, so the panel reflects genuine progress rather than canned entries.
+  if (leveledUp) {
+    const reached = LADDER[next.currentRung - 1];
+    ops.push(
+      prisma.notification.create({
+        data: {
+          userId: user.id,
+          type: 'level',
+          title: 'Level up!',
+          body: `You reached ${reached.name} (${reached.code}).`,
+        },
+      }),
+    );
+  }
+
+  const [report, updatedUser] = await prisma.$transaction(ops);
 
   return json({ report, user: updatedUser }, { status: 201 });
 }

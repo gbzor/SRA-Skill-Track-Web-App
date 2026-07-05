@@ -61,14 +61,6 @@ const INITIAL_REPORTS = [
   { id:8, period:'weekly',  pb:6,  score:84, rate:198, colorIdx:2, when:'6w ago',     xp:101 },
 ];
 
-const INITIAL_NOTIFS = [
-  { id:1, type:'achievement', title:'Achievement unlocked', body:'You earned "Power Surge" — 10 Power Builders in a week.', when:'2h ago', unread:true },
-  { id:2, type:'level',       title:'Level up!',            body:'You reached Olive — two-thirds up the ladder.', when:'2d ago', unread:true },
-  { id:3, type:'reminder',    title:'Progress report due',  body:"You haven't logged a report in 3 days. Keep your streak alive.", when:'3d ago', unread:false },
-  { id:4, type:'guide',       title:'New guide added',      body:'"Reading rate without losing comprehension" is now in your Guide.', when:'4d ago', unread:false },
-  { id:5, type:'account',     title:'Weekly summary ready', body:'Your week: 8 Power Builders, 88% average comprehension.', when:'1w ago', unread:false },
-];
-
 const periodLabel = p => ({ daily:'Daily', weekly:'Weekly', monthly:'Monthly' }[p] || p);
 function relativeWhen(iso) {
   const d = new Date(iso); const now = Date.now(); const diff = (now - d.getTime()) / 1000;
@@ -109,34 +101,37 @@ const NotifIcon = ({ type }) => {
 export default function Page() {
   const [screen, setScreen] = useState('home');
   const [ladderTab, setLadderTab] = useState('climb');
-  const [streak] = useState(12);
+  const [streak, setStreak] = useState(0);
   const [currentRung, setCurrentRung] = useState(6);
   const [xp, setXp] = useState(340);
-  const [showReminder, setShowReminder] = useState(true);
+  const [showReminder, setShowReminder] = useState(false);
   const [reports, setReports] = useState(INITIAL_REPORTS);
   const { data: session } = useSession();
   const router = useRouter();
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const r = await fetch('/api/me', { credentials: 'same-origin' });
-        if (r.status === 401) {
-          // Server says this session no longer maps to a real user
-          // (account deleted while the JWT was still valid). Force a clean sign-out.
-          await signOut({ callbackUrl: '/login' });
-          return;
-        }
-        if (!r.ok) return;
-        const j = await r.json();
-        if (!alive || !j.user) return;
-        if (typeof j.user.currentRung === 'number') setCurrentRung(j.user.currentRung);
-        if (typeof j.user.pbToNext === 'number') setXp(xpFromPbToNext(j.user.pbToNext));
-      } catch {}
-    })();
-    return () => { alive = false; };
-  }, []);
+  const loadMe = async () => {
+    try {
+      const r = await fetch('/api/me', { credentials: 'same-origin' });
+      if (r.status === 401) {
+        // Server says this session no longer maps to a real user
+        // (account deleted while the JWT was still valid). Force a clean sign-out.
+        await signOut({ callbackUrl: '/login' });
+        return;
+      }
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!j.user) return;
+      if (typeof j.user.currentRung === 'number') setCurrentRung(j.user.currentRung);
+      if (typeof j.user.pbToNext === 'number') setXp(xpFromPbToNext(j.user.pbToNext));
+      if (typeof j.user.streak === 'number') setStreak(j.user.streak);
+      // Show the "log a report" nudge only when it's genuinely been 3+ days.
+      const last = j.user.lastReportAt ? new Date(j.user.lastReportAt).getTime() : null;
+      setShowReminder(last != null && Date.now() - last >= 3 * 24 * 60 * 60 * 1000);
+    } catch {}
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadMe(); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -161,7 +156,23 @@ export default function Page() {
     })();
     return () => { alive = false; };
   }, []);
-  const [notifs, setNotifs] = useState(INITIAL_NOTIFS);
+  const [notifs, setNotifs] = useState([]);
+
+  const loadNotifs = async () => {
+    try {
+      const r = await fetch('/api/notifications', { credentials: 'same-origin' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!Array.isArray(j.notifications)) return;
+      setNotifs(j.notifications.map(n => ({
+        id: n.id, type: n.type, title: n.title, body: n.body,
+        when: relativeWhen(n.createdAt), unread: !n.read,
+      })));
+    } catch {}
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadNotifs(); }, []);
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportStep, setReportStep] = useState(1);
@@ -182,7 +193,19 @@ export default function Page() {
   const goGuide  = () => setScreen('guide');
   const goLadder = () => setScreen('ladder');
   const goStats  = () => setScreen('stats');
-  const openNotifs = () => { setScreen('notifs'); setNotifs(n => n.map(x => ({ ...x, unread: false }))); };
+  const openNotifs = async () => {
+    setScreen('notifs');
+    setNotifs(n => n.map(x => ({ ...x, unread: false })));
+    // Persist read state server-side so these don't return unread next visit.
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+    } catch {}
+  };
 
   const openFeatured = () => { setGuideOpen(true); setActiveGuideIdx(-2); };
   const openGuide = i => () => { setGuideOpen(true); setActiveGuideIdx(i); };
@@ -242,6 +265,8 @@ export default function Page() {
 
     setReportOpen(false);
     setShowReminder(false);
+    // Pull the streak and any level-up notification the server just recorded.
+    if (serverUser) { loadMe(); loadNotifs(); }
   };
 
   const rNextStep = () => { if (reportStep < 3) setReportStep(s => s + 1); else submitReport(); };
@@ -764,6 +789,11 @@ export default function Page() {
                     </div>
                   </div>
                 ))}
+                {v.notifications.length === 0 && (
+                  <div style={{ textAlign:'center', color:'#8a8175', fontSize:13, padding:'48px 20px', lineHeight:1.6 }}>
+                    You&apos;re all caught up.<br />New notifications will show up here.
+                  </div>
+                )}
               </div>
             </div>
           )}

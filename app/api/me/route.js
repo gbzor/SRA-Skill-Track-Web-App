@@ -4,8 +4,13 @@ import { prisma } from '../../../lib/prisma';
 import { check } from '../../../lib/rate-limit';
 import { json, originOk, readJson } from '../../../lib/http';
 import { UpdateProfileSchema, DeleteAccountSchema } from '../../../lib/validation';
+import { computeStreak } from '../../../lib/streak';
 
 export const runtime = 'nodejs';
+
+// Enough history to cover any real streak; caps the row scan so one busy
+// account can't make this query unbounded.
+const STREAK_WINDOW_DAYS = 400;
 
 export async function GET() {
   const user = await getSessionUser();
@@ -14,7 +19,18 @@ export async function GET() {
   const rl = await check('read', user.id);
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  return json({ user });
+  // Streak is derived live from report history, not stored — so it's always
+  // accurate on load rather than a stale hardcoded number.
+  const since = new Date(Date.now() - STREAK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const recent = await prisma.report.findMany({
+    where: { userId: user.id, createdAt: { gte: since } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  });
+  const streak = computeStreak(recent.map((r) => r.createdAt));
+  const lastReportAt = recent[0]?.createdAt ?? null;
+
+  return json({ user: { ...user, streak, lastReportAt } });
 }
 
 export async function PATCH(req) {
