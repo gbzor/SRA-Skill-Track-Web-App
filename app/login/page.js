@@ -10,15 +10,36 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  // Only accept a same-origin, single-slash relative path as the post-login
+  // destination. Rejects absolute (https://evil.com) and protocol-relative
+  // (//evil.com) values so a crafted ?next= can't turn login into an open
+  // redirect. Applied to the raw query param and, defensively, to res.url.
+  function safeNext(raw) {
+    if (typeof raw !== 'string') return '/';
+    if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
+    return raw;
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setErr('');
-    const next = new URLSearchParams(window.location.search).get('next') || '/';
+    const next = safeNext(new URLSearchParams(window.location.search).get('next'));
     const res = await signIn('credentials', { email, password, redirect: false, callbackUrl: next });
     setBusy(false);
     if (!res || res.error) { setErr('Invalid email or password'); return; }
-    window.location.href = res.url || next;
+    // res.url is an absolute same-origin URL from NextAuth; reduce it to its
+    // path+query so the same relative-only rule applies before we navigate.
+    let dest = next;
+    if (res.url) {
+      try {
+        const u = new URL(res.url, window.location.origin);
+        dest = u.origin === window.location.origin ? safeNext(u.pathname + u.search) : next;
+      } catch {
+        dest = next;
+      }
+    }
+    window.location.href = dest;
   }
 
   return (

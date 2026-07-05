@@ -3,7 +3,7 @@ import { prisma } from '../../../lib/prisma';
 import { ReportSchema, computeReportXp } from '../../../lib/validation';
 import { LADDER, PB_PER_COLOR } from '../../../lib/ladder';
 import { check } from '../../../lib/rate-limit';
-import { json, originOk } from '../../../lib/http';
+import { json, originOk, readJson } from '../../../lib/http';
 
 const MAX_RUNG = LADDER.length;
 
@@ -61,10 +61,10 @@ export async function POST(req) {
   const rl = await check('write', user.id);
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  let body;
-  try { body = await req.json(); } catch { return json({ error: 'invalid json' }, { status: 400 }); }
+  const read = await readJson(req);
+  if (read.error) return json({ error: read.error }, { status: read.status });
 
-  const parsed = ReportSchema.safeParse(body);
+  const parsed = ReportSchema.safeParse(read.data);
   if (!parsed.success) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }

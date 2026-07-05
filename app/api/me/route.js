@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { getSessionUser } from '../../../lib/session';
 import { prisma } from '../../../lib/prisma';
 import { check } from '../../../lib/rate-limit';
-import { json, originOk } from '../../../lib/http';
+import { json, originOk, readJson } from '../../../lib/http';
 import { UpdateProfileSchema, DeleteAccountSchema } from '../../../lib/validation';
 
 export const runtime = 'nodejs';
@@ -26,14 +26,10 @@ export async function PATCH(req) {
   const rl = await check('write', user.id);
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'invalid json' }, { status: 400 });
-  }
+  const read = await readJson(req);
+  if (read.error) return json({ error: read.error }, { status: read.status });
 
-  const parsed = UpdateProfileSchema.safeParse(body);
+  const parsed = UpdateProfileSchema.safeParse(read.data);
   if (!parsed.success) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }
@@ -83,14 +79,10 @@ export async function DELETE(req) {
   const rl = await check('write', user.id);
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'invalid json' }, { status: 400 });
-  }
+  const read = await readJson(req);
+  if (read.error) return json({ error: read.error }, { status: read.status });
 
-  const parsed = DeleteAccountSchema.safeParse(body);
+  const parsed = DeleteAccountSchema.safeParse(read.data);
   if (!parsed.success) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }

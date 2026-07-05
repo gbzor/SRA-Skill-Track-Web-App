@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "prisma": "5.22.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
