@@ -27,13 +27,23 @@ export async function POST(req) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   const passwordHash = await bcrypt.hash(password, 12);
   if (!existing) {
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name: name ?? null,
         currentRung,
         pbToNext,
+      },
+      select: { id: true },
+    });
+    // Seed a first notification so the panel shows something real from day one.
+    await prisma.notification.create({
+      data: {
+        userId: created.id,
+        type: 'account',
+        title: 'Welcome to SRA Tracker',
+        body: 'Log your first Power Builder report to start climbing the color ladder.',
       },
     });
   }
