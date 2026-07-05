@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../../../lib/prisma';
 import { RegisterSchema } from '../../../../lib/validation';
 import { check, clientIp } from '../../../../lib/rate-limit';
-import { json, originOk } from '../../../../lib/http';
+import { json, originOk, readJson } from '../../../../lib/http';
 
 export const runtime = 'nodejs';
 
@@ -12,14 +12,10 @@ export async function POST(req) {
   const rl = await check('auth', clientIp(req));
   if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'invalid json' }, { status: 400 });
-  }
+  const read = await readJson(req);
+  if (read.error) return json({ error: read.error }, { status: read.status });
 
-  const parsed = RegisterSchema.safeParse(body);
+  const parsed = RegisterSchema.safeParse(read.data);
   if (!parsed.success) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }
