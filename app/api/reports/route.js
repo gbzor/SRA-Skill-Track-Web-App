@@ -108,3 +108,18 @@ export async function POST(req) {
 
   return json({ report, user: updatedUser }, { status: 201 });
 }
+
+// Clear the current user's entire report history. Scoped to userId so a user
+// can only ever wipe their own reports; ladder level/XP are left untouched.
+export async function DELETE(req) {
+  if (!originOk(req)) return json({ error: 'forbidden' }, { status: 403 });
+
+  const user = await getSessionUser();
+  if (!user) return json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await check('write', user.id);
+  if (!rl.success) return json({ error: 'too many requests' }, { status: 429 });
+
+  const result = await prisma.report.deleteMany({ where: { userId: user.id } });
+  return json({ ok: true, deleted: result.count });
+}

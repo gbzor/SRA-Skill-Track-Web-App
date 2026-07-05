@@ -44,6 +44,11 @@ export default function AccountPage() {
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState(null);
 
+  // Clear report history flow
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
+  const [clearMsg, setClearMsg] = useState(null); // { ok: bool, text }
+
   // Delete account flow
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [delPw, setDelPw] = useState('');
@@ -140,6 +145,27 @@ export default function AccountPage() {
     } catch {
       setPwMsg({ ok: false, text: 'Network error. Try again.' });
       setPwBusy(false);
+    }
+  };
+
+  const clearReports = async () => {
+    setClearBusy(true);
+    setClearMsg(null);
+    try {
+      const r = await fetch('/api/reports', { method: 'DELETE', credentials: 'same-origin' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setClearMsg({ ok: false, text: j?.error || 'Could not clear your reports.' });
+        setClearBusy(false);
+        return;
+      }
+      setClearOpen(false);
+      setClearBusy(false);
+      const n = typeof j?.deleted === 'number' ? j.deleted : 0;
+      setClearMsg({ ok: true, text: n === 0 ? 'No reports to clear.' : `Cleared ${n} report${n === 1 ? '' : 's'}.` });
+    } catch {
+      setClearMsg({ ok: false, text: 'Network error. Try again.' });
+      setClearBusy(false);
     }
   };
 
@@ -271,6 +297,48 @@ export default function AccountPage() {
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
                 Log out
               </button>
+            </div>
+
+            {/* Report history */}
+            <div style={cardStyle}>
+              <div style={labelStyle}>Report history</div>
+              {!clearOpen ? (
+                <>
+                  <div style={{ fontSize: 12, color: '#8a7d6e', marginTop: 8, lineHeight: 1.5 }}>
+                    Remove all your logged progress reports and reset your stats. Your color level and XP are kept.
+                  </div>
+                  {clearMsg && <Message msg={clearMsg} />}
+                  <button
+                    onClick={() => { setClearOpen(true); setClearMsg(null); }}
+                    style={{ marginTop: 14, width: '100%', padding: 14, borderRadius: 14, background: '#fff', color: '#1a1a1a', border: '1px solid #ece6db', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Clear report history
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a1a', marginTop: 10 }}>Clear all your progress reports?</div>
+                  <div style={{ fontSize: 12, color: '#8a7d6e', marginTop: 6, lineHeight: 1.5 }}>
+                    This permanently deletes every report you&apos;ve logged. It can&apos;t be undone.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                    <button
+                      onClick={clearBusy ? undefined : () => setClearOpen(false)}
+                      disabled={clearBusy}
+                      style={{ flex: '0 0 auto', padding: '14px 22px', background: '#ece6db', color: '#1a1a1a', borderRadius: 14, border: 'none', fontSize: 14, fontWeight: 600, cursor: clearBusy ? 'default' : 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={clearBusy ? undefined : clearReports}
+                      disabled={clearBusy}
+                      style={{ flex: 1, padding: 14, background: clearBusy ? '#4a443c' : '#1a1a1a', color: '#fff', borderRadius: 14, border: 'none', fontSize: 14, fontWeight: 600, cursor: clearBusy ? 'default' : 'pointer' }}
+                    >
+                      {clearBusy ? 'Clearing…' : 'Yes, clear all reports'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Danger zone */}
