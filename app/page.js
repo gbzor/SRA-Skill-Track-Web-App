@@ -105,6 +105,7 @@ export default function Page() {
   const [currentRung, setCurrentRung] = useState(6);
   const [xp, setXp] = useState(340);
   const [showReminder, setShowReminder] = useState(false);
+  const [daysSinceReport, setDaysSinceReport] = useState(0);
   const [reports, setReports] = useState(INITIAL_REPORTS);
   const { data: session } = useSession();
   const router = useRouter();
@@ -124,9 +125,12 @@ export default function Page() {
       if (typeof j.user.currentRung === 'number') setCurrentRung(j.user.currentRung);
       if (typeof j.user.pbToNext === 'number') setXp(xpFromPbToNext(j.user.pbToNext));
       if (typeof j.user.streak === 'number') setStreak(j.user.streak);
-      // Show the "log a report" nudge only when it's genuinely been 3+ days.
+      // Show the "log a report" nudge only when it's genuinely been 3+ days,
+      // and surface the real gap rather than a fixed "3 days".
       const last = j.user.lastReportAt ? new Date(j.user.lastReportAt).getTime() : null;
-      setShowReminder(last != null && Date.now() - last >= 3 * 24 * 60 * 60 * 1000);
+      const days = last != null ? Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000)) : null;
+      setDaysSinceReport(days ?? 0);
+      setShowReminder(days != null && days >= 3);
     } catch {}
   };
 
@@ -444,8 +448,10 @@ export default function Page() {
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                   </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:12, fontWeight:600 }}>No report in 3 days</div>
-                    <div style={{ fontSize:11, color:'#8a7d6e', marginTop:1 }}>Log one to protect your {streak}-day streak.</div>
+                    <div style={{ fontSize:12, fontWeight:600 }}>No report in {daysSinceReport} {daysSinceReport === 1 ? 'day' : 'days'}</div>
+                    <div style={{ fontSize:11, color:'#8a7d6e', marginTop:1 }}>
+                      {streak > 0 ? `Log one to protect your ${streak}-day streak.` : 'Log one to get your streak going again.'}
+                    </div>
                   </div>
                   <div onClick={openReport} style={{ padding:'8px 12px', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>Log now</div>
                 </div>
