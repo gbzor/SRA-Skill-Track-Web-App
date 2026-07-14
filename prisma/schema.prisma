@@ -13,8 +13,13 @@ model User {
   email        String   @unique
   passwordHash String
   name         String?
-  currentRung  Int      @default(1)
-  pbToNext     Int      @default(20)
+  // Ladder position. levelIdx indexes LEVELS (0 = 1C, the starting level);
+  // colorIdx indexes the color within that level; pbPassed is how many of the
+  // 6 required passing Power Builder sets the reader has cleared in the current
+  // color. Progression is owned server-side (lib/ladder.js advanceProgress).
+  levelIdx     Int      @default(0)
+  colorIdx     Int      @default(0)
+  pbPassed     Int      @default(0)
   // Bumped on password change; embedded in every issued JWT and compared on
   // each request so a stolen session token is invalidated the moment the
   // password is rotated, instead of staying valid until the 7-day JWT expiry.
@@ -27,16 +32,25 @@ model User {
 }
 
 model Report {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  period    String
-  pb        Int
-  score     Int
-  rate      Int
-  colorIdx  Int
-  xp        Int
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period            String
+  // 'powerbuilder' | 'exit_test' | 'level_test'
+  kind              String
+  levelIdx          Int
+  colorIdx          Int
+  // Number of Power Builder sets logged in this report (0 for tests).
+  pbCount           Int
+  score             Int
+  rate              Int
+  // Whether the report's score met the passing threshold.
+  passed            Boolean
+  // For a level test: the color index the reader was placed at in the next
+  // level. Null for other report kinds.
+  placementColorIdx Int?
+  xp                Int
+  createdAt         DateTime @default(now())
 
   @@index([userId, createdAt])
 }

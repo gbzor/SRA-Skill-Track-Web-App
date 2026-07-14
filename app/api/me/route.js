@@ -80,7 +80,7 @@ export async function PATCH(req) {
     where: { id: user.id },
     data,
     select: {
-      id: true, email: true, name: true, currentRung: true, pbToNext: true,
+      id: true, email: true, name: true, levelIdx: true, colorIdx: true, pbPassed: true,
     },
   });
   return json({ user: updated });

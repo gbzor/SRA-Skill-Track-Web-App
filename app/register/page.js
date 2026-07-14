@@ -3,20 +3,32 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { LADDER } from '../../lib/ladder';
+import { LEVELS, colorName } from '../../lib/ladder';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [currentRung, setCurrentRung] = useState(1);
-  const [pbToNext, setPbToNext] = useState(20);
+  // New readers start at 1C, first color, no passing sets. A returning reader
+  // can record where they actually are.
+  const [levelIdx, setLevelIdx] = useState(0);
+  const [colorIdx, setColorIdx] = useState(0);
+  const [pbPassed, setPbPassed] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  const colors = LEVELS[levelIdx].colors;
+
+  function onLevelChange(nextLevel) {
+    setLevelIdx(nextLevel);
+    // Keep the color index in range for the newly chosen level.
+    if (colorIdx >= LEVELS[nextLevel].colors.length) setColorIdx(0);
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true); setErr('');
+    const safeColorIdx = Math.min(colorIdx, colors.length - 1);
     const r = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -24,8 +36,9 @@ export default function Register() {
         email,
         password,
         name: name || undefined,
-        currentRung: Number(currentRung),
-        pbToNext: Number(pbToNext),
+        levelIdx: Number(levelIdx),
+        colorIdx: Number(safeColorIdx),
+        pbPassed: Number(pbPassed),
       }),
     });
     if (!r.ok) {
@@ -59,35 +72,51 @@ export default function Register() {
         </label>
         <div style={S.hint}>12+ characters, with an uppercase, lowercase, and a digit.</div>
 
-        <label style={S.label}>Current color level
+        <label style={S.label}>Current SRA level
           <select
-            value={currentRung}
-            onChange={e => setCurrentRung(parseInt(e.target.value, 10))}
+            value={levelIdx}
+            onChange={e => onLevelChange(parseInt(e.target.value, 10))}
             style={S.input}
             required
           >
-            {LADDER.map((lvl, i) => (
-              <option key={lvl.code} value={i + 1}>
-                {lvl.code} — {lvl.name}
+            {LEVELS.map((lvl, i) => (
+              <option key={lvl.code} value={i}>
+                {lvl.code}
               </option>
             ))}
           </select>
         </label>
-        <div style={S.hint}>Pick the color you're currently working in.</div>
+        <div style={S.hint}>Everyone starts at 1C. Pick a higher level only if you're already past it.</div>
 
-        <label style={S.label}>Power Builders left until next color
+        <label style={S.label}>Current color
+          <select
+            value={Math.min(colorIdx, colors.length - 1)}
+            onChange={e => setColorIdx(parseInt(e.target.value, 10))}
+            style={S.input}
+            required
+          >
+            {colors.map((c, i) => (
+              <option key={c} value={i}>
+                {i + 1}. {colorName(c)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div style={S.hint}>The color you're currently working in.</div>
+
+        <label style={S.label}>Passing Power Builder sets done in this color
           <input
             type="number"
             min={0}
-            max={100}
+            max={6}
             step={1}
-            value={pbToNext}
-            onChange={e => setPbToNext(parseInt(e.target.value || '0', 10))}
+            value={pbPassed}
+            onChange={e => setPbPassed(Math.max(0, Math.min(6, parseInt(e.target.value || '0', 10))))}
             style={S.input}
             required
           />
         </label>
-        <div style={S.hint}>Roughly how many Power Builders you have left to clear this color.</div>
+        <div style={S.hint}>Out of the 6 passing sets needed before this color's exit test.</div>
 
         {err && <div style={S.err}>{err}</div>}
         <button type="submit" disabled={busy} style={S.btn}>{busy ? '…' : 'Create account'}</button>
