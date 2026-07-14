@@ -8,6 +8,7 @@ import { LEVELS, colorName } from '../../lib/ladder';
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
   // New readers start at 1C, first color, no passing sets. A returning reader
   // can record where they actually are.
@@ -32,6 +33,14 @@ export default function Register() {
 
   async function onSubmit(e) {
     e.preventDefault();
+    // Confirm-password is a client-only guard against typos: the two fields must
+    // match before we submit. It is deliberately never sent to the server — the
+    // register API validates a strict schema and would reject an unknown field —
+    // so this check exists purely to stop a mistyped password from being saved.
+    if (password !== confirm) {
+      setErr('Passwords do not match.');
+      return;
+    }
     setBusy(true); setErr('');
     const safeColorIdx = Math.min(colorIdx, colors.length - 1);
     // Test-only means no sets are required (or already cleared).
@@ -77,9 +86,16 @@ export default function Register() {
         </label>
 
         <label style={S.label}>Password
-          <input type="password" required autoComplete="new-password" minLength={12} value={password} onChange={e => setPassword(e.target.value)} style={S.input}/>
+          <input type="password" required autoComplete="new-password" minLength={12} maxLength={128} value={password} onChange={e => { setPassword(e.target.value); setErr(''); }} style={S.input}/>
         </label>
         <div style={S.hint}>12+ characters, with an uppercase, lowercase, and a digit.</div>
+
+        <label style={S.label}>Confirm password
+          <input type="password" required autoComplete="new-password" minLength={12} maxLength={128} value={confirm} onChange={e => { setConfirm(e.target.value); setErr(''); }} style={S.input}/>
+        </label>
+        {confirm.length > 0 && confirm !== password && (
+          <div style={S.hint}>Passwords do not match yet.</div>
+        )}
 
         <label style={S.label}>Current SRA level
           <select
