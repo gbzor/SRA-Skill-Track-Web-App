@@ -4,13 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import IOSDevice from '../IOSDevice';
-
-// Same color ladder as the home screen, so the account page picks up the
-// reader's current accent rather than a hard-coded one.
-const LADDER_HEX = [
-  '#c96d8a', '#c95c5c', '#db8447', '#d9b850', '#6fac6f',
-  '#7d8a45', '#4fa8a8', '#5c89c9', '#8c5ca8',
-];
+import { stepInfo } from '../../lib/ladder';
 
 const darken = (hex, a = 40) => {
   const n = i => Math.max(0, parseInt(hex.slice(i, i + 2), 16) - a).toString(16).padStart(2, '0');
@@ -31,7 +25,8 @@ export default function AccountPage() {
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [currentRung, setCurrentRung] = useState(1);
+  const [levelIdx, setLevelIdx] = useState(0);
+  const [colorIdx, setColorIdx] = useState(0);
 
   // Profile (name) form
   const [nameDraft, setNameDraft] = useState('');
@@ -67,7 +62,8 @@ export default function AccountPage() {
         setEmail(j.user.email || '');
         setName(j.user.name || '');
         setNameDraft(j.user.name || '');
-        if (typeof j.user.currentRung === 'number') setCurrentRung(j.user.currentRung);
+        if (typeof j.user.levelIdx === 'number') setLevelIdx(j.user.levelIdx);
+        if (typeof j.user.colorIdx === 'number') setColorIdx(j.user.colorIdx);
       } catch {}
     })();
     return () => { alive = false; };
@@ -79,16 +75,18 @@ export default function AccountPage() {
   const initial = (shownName || shownEmail || '?').trim().charAt(0).toUpperCase();
 
   const theme = useMemo(() => {
-    const hex = LADDER_HEX[Math.min(Math.max(currentRung - 1, 0), LADDER_HEX.length - 1)];
+    const step = stepInfo(levelIdx, colorIdx) || stepInfo(0, 0);
+    const hex = step.hex;
     return {
       accent: hex,
       accentDark: darken(hex, 42),
       accentTint: mix(hex, 0.86),
       accentBorder: mix(hex, 0.66),
     };
-  }, [currentRung]);
+  }, [levelIdx, colorIdx]);
 
   const goHome = () => router.push('/');
+  const goHistory = () => router.push('/history');
 
   const saveName = async () => {
     const next = nameDraft.trim();
@@ -257,6 +255,21 @@ export default function AccountPage() {
               {nameMsg && <Message msg={nameMsg} />}
               <button onClick={nameBusy ? undefined : saveName} disabled={nameBusy} style={primaryBtn(nameBusy)}>
                 {nameBusy ? 'Saving…' : 'Save name'}
+              </button>
+            </div>
+
+            {/* SRA history */}
+            <div style={cardStyle}>
+              <div style={labelStyle}>SRA History</div>
+              <div style={{ fontSize: 12, color: '#8a7d6e', marginTop: 8, lineHeight: 1.5 }}>
+                View the complete record of your color-level progression, recorded by the system. Read-only.
+              </div>
+              <button
+                onClick={goHistory}
+                style={{ marginTop: 14, width: '100%', padding: 14, borderRadius: 14, background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 106 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
+                View SRA history
               </button>
             </div>
 

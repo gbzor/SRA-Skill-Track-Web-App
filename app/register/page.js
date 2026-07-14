@@ -3,20 +3,40 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { LADDER } from '../../lib/ladder';
+import { LEVELS, colorName } from '../../lib/ladder';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [currentRung, setCurrentRung] = useState(1);
-  const [pbToNext, setPbToNext] = useState(20);
+  // New readers start at 1C, first color, no passing sets. A returning reader
+  // can record where they actually are.
+  const [levelIdx, setLevelIdx] = useState(0);
+  const [colorIdx, setColorIdx] = useState(0);
+  // Advancement rule: 'sets' = pass N Power Builder sets then a test;
+  // 'test' = only a test is needed (no set requirement).
+  const [advanceMode, setAdvanceMode] = useState('sets');
+  const [setsToPass, setSetsToPass] = useState(6);
+  const [pbPassed, setPbPassed] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  const colors = LEVELS[levelIdx].colors;
+  const testOnly = advanceMode === 'test';
+
+  function onLevelChange(nextLevel) {
+    setLevelIdx(nextLevel);
+    // Keep the color index in range for the newly chosen level.
+    if (colorIdx >= LEVELS[nextLevel].colors.length) setColorIdx(0);
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
     setBusy(true); setErr('');
+    const safeColorIdx = Math.min(colorIdx, colors.length - 1);
+    // Test-only means no sets are required (or already cleared).
+    const effectiveSets = testOnly ? 0 : setsToPass;
+    const effectivePbPassed = testOnly ? 0 : Math.min(pbPassed, effectiveSets);
     const r = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -24,8 +44,10 @@ export default function Register() {
         email,
         password,
         name: name || undefined,
-        currentRung: Number(currentRung),
-        pbToNext: Number(pbToNext),
+        levelIdx: Number(levelIdx),
+        colorIdx: Number(safeColorIdx),
+        setsToPass: Number(effectiveSets),
+        pbPassed: Number(effectivePbPassed),
       }),
     });
     if (!r.ok) {
@@ -59,35 +81,86 @@ export default function Register() {
         </label>
         <div style={S.hint}>12+ characters, with an uppercase, lowercase, and a digit.</div>
 
-        <label style={S.label}>Current color level
+        <label style={S.label}>Current SRA level
           <select
-            value={currentRung}
-            onChange={e => setCurrentRung(parseInt(e.target.value, 10))}
+            value={levelIdx}
+            onChange={e => onLevelChange(parseInt(e.target.value, 10))}
             style={S.input}
             required
           >
-            {LADDER.map((lvl, i) => (
-              <option key={lvl.code} value={i + 1}>
-                {lvl.code} — {lvl.name}
+            {LEVELS.map((lvl, i) => (
+              <option key={lvl.code} value={i}>
+                {lvl.code}
               </option>
             ))}
           </select>
         </label>
-        <div style={S.hint}>Pick the color you're currently working in.</div>
+        <div style={S.hint}>Everyone starts at 1C. Pick a higher level only if you're already past it.</div>
 
-        <label style={S.label}>Power Builders left until next color
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            value={pbToNext}
-            onChange={e => setPbToNext(parseInt(e.target.value || '0', 10))}
+        <label style={S.label}>Current color
+          <select
+            value={Math.min(colorIdx, colors.length - 1)}
+            onChange={e => setColorIdx(parseInt(e.target.value, 10))}
             style={S.input}
             required
-          />
+          >
+            {colors.map((c, i) => (
+              <option key={c} value={i}>
+                {i + 1}. {colorName(c)}
+              </option>
+            ))}
+          </select>
         </label>
-        <div style={S.hint}>Roughly how many Power Builders you have left to clear this color.</div>
+        <div style={S.hint}>The color you're currently working in.</div>
+
+        <label style={S.label}>How do you move up a color or level?
+          <select
+            value={advanceMode}
+            onChange={e => setAdvanceMode(e.target.value)}
+            style={S.input}
+            required
+          >
+            <option value="sets">Pass a number of Power Builder sets, then a test</option>
+            <option value="test">Only a test is needed</option>
+          </select>
+        </label>
+        <div style={S.hint}>How your SRA program advances you to the next color and level.</div>
+
+        {!testOnly && (
+          <>
+            <label style={S.label}>Power Builder sets needed to level up
+              <input
+                type="number"
+                min={1}
+                max={12}
+                step={1}
+                value={setsToPass}
+                onChange={e => {
+                  const n = Math.max(1, Math.min(12, parseInt(e.target.value || '1', 10)));
+                  setSetsToPass(n);
+                  if (pbPassed > n) setPbPassed(n);
+                }}
+                style={S.input}
+                required
+              />
+            </label>
+            <div style={S.hint}>Passing sets required before a color&apos;s exit test (each color has 12 available).</div>
+
+            <label style={S.label}>Passing sets already done in this color
+              <input
+                type="number"
+                min={0}
+                max={setsToPass}
+                step={1}
+                value={pbPassed}
+                onChange={e => setPbPassed(Math.max(0, Math.min(setsToPass, parseInt(e.target.value || '0', 10))))}
+                style={S.input}
+                required
+              />
+            </label>
+            <div style={S.hint}>Out of the {setsToPass} passing sets needed before this color&apos;s exit test.</div>
+          </>
+        )}
 
         {err && <div style={S.err}>{err}</div>}
         <button type="submit" disabled={busy} style={S.btn}>{busy ? '…' : 'Create account'}</button>

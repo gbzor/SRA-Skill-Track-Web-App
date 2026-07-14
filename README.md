@@ -97,5 +97,6 @@ Vercel builds + deploys automatically on every push to `main`. Visit `https://<y
 ## What changes if you fork this
 
 - `LICENSE` is MIT — update the copyright line if you publish
-- The hardcoded SRA color ladder and guide content live in `app/page.js`
-- The XP formula `pb * (score / 100) * 18` lives in `lib/validation.js` (`computeReportXp`)
+- The SRA levels, color palette, and all progression rules live in `lib/ladder.js` (`LEVELS`, `COLORS`, `advanceProgress`) — this is the single source of truth shared by the server and client
+- Ladder tuning (`PB_SETS_PER_COLOR`, `PB_SETS_TO_PASS`, `PASS_SCORE`) and the display XP formula (`reportXp`) also live in `lib/ladder.js`
+- Reading-guide content lives in `app/page.js`
