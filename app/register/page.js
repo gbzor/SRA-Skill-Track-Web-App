@@ -13,11 +13,16 @@ export default function Register() {
   // can record where they actually are.
   const [levelIdx, setLevelIdx] = useState(0);
   const [colorIdx, setColorIdx] = useState(0);
+  // Advancement rule: 'sets' = pass N Power Builder sets then a test;
+  // 'test' = only a test is needed (no set requirement).
+  const [advanceMode, setAdvanceMode] = useState('sets');
+  const [setsToPass, setSetsToPass] = useState(6);
   const [pbPassed, setPbPassed] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const colors = LEVELS[levelIdx].colors;
+  const testOnly = advanceMode === 'test';
 
   function onLevelChange(nextLevel) {
     setLevelIdx(nextLevel);
@@ -29,6 +34,9 @@ export default function Register() {
     e.preventDefault();
     setBusy(true); setErr('');
     const safeColorIdx = Math.min(colorIdx, colors.length - 1);
+    // Test-only means no sets are required (or already cleared).
+    const effectiveSets = testOnly ? 0 : setsToPass;
+    const effectivePbPassed = testOnly ? 0 : Math.min(pbPassed, effectiveSets);
     const r = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -38,7 +46,8 @@ export default function Register() {
         name: name || undefined,
         levelIdx: Number(levelIdx),
         colorIdx: Number(safeColorIdx),
-        pbPassed: Number(pbPassed),
+        setsToPass: Number(effectiveSets),
+        pbPassed: Number(effectivePbPassed),
       }),
     });
     if (!r.ok) {
@@ -104,19 +113,54 @@ export default function Register() {
         </label>
         <div style={S.hint}>The color you're currently working in.</div>
 
-        <label style={S.label}>Passing Power Builder sets done in this color
-          <input
-            type="number"
-            min={0}
-            max={6}
-            step={1}
-            value={pbPassed}
-            onChange={e => setPbPassed(Math.max(0, Math.min(6, parseInt(e.target.value || '0', 10))))}
+        <label style={S.label}>How do you move up a color or level?
+          <select
+            value={advanceMode}
+            onChange={e => setAdvanceMode(e.target.value)}
             style={S.input}
             required
-          />
+          >
+            <option value="sets">Pass a number of Power Builder sets, then a test</option>
+            <option value="test">Only a test is needed</option>
+          </select>
         </label>
-        <div style={S.hint}>Out of the 6 passing sets needed before this color's exit test.</div>
+        <div style={S.hint}>How your SRA program advances you to the next color and level.</div>
+
+        {!testOnly && (
+          <>
+            <label style={S.label}>Power Builder sets needed to level up
+              <input
+                type="number"
+                min={1}
+                max={12}
+                step={1}
+                value={setsToPass}
+                onChange={e => {
+                  const n = Math.max(1, Math.min(12, parseInt(e.target.value || '1', 10)));
+                  setSetsToPass(n);
+                  if (pbPassed > n) setPbPassed(n);
+                }}
+                style={S.input}
+                required
+              />
+            </label>
+            <div style={S.hint}>Passing sets required before a color&apos;s exit test (each color has 12 available).</div>
+
+            <label style={S.label}>Passing sets already done in this color
+              <input
+                type="number"
+                min={0}
+                max={setsToPass}
+                step={1}
+                value={pbPassed}
+                onChange={e => setPbPassed(Math.max(0, Math.min(setsToPass, parseInt(e.target.value || '0', 10))))}
+                style={S.input}
+                required
+              />
+            </label>
+            <div style={S.hint}>Out of the {setsToPass} passing sets needed before this color&apos;s exit test.</div>
+          </>
+        )}
 
         {err && <div style={S.err}>{err}</div>}
         <button type="submit" disabled={busy} style={S.btn}>{busy ? '…' : 'Create account'}</button>

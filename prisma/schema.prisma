@@ -20,6 +20,9 @@ model User {
   levelIdx     Int      @default(0)
   colorIdx     Int      @default(0)
   pbPassed     Int      @default(0)
+  // The reader's own advancement rule: how many passing Power Builder sets are
+  // needed before a color's exit/level test. 0 means only a test is needed.
+  setsToPass   Int      @default(6)
   // Bumped on password change; embedded in every issued JWT and compared on
   // each request so a stolen session token is invalidated the moment the
   // password is rotated, instead of staying valid until the 7-day JWT expiry.

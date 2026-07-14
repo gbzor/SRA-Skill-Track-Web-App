@@ -87,6 +87,9 @@ export default function Page() {
   const [levelIdx, setLevelIdx] = useState(0);
   const [colorIdx, setColorIdx] = useState(0);
   const [pbPassed, setPbPassed] = useState(0);
+  // The reader's own advancement rule (passing sets needed before a test;
+  // 0 = test-only), loaded from the server.
+  const [setsToPass, setSetsToPass] = useState(PB_SETS_TO_PASS);
   const [showReminder, setShowReminder] = useState(false);
   const [daysSinceReport, setDaysSinceReport] = useState(0);
   const [reports, setReports] = useState([]);
@@ -106,6 +109,7 @@ export default function Page() {
       if (typeof j.user.levelIdx === 'number') setLevelIdx(j.user.levelIdx);
       if (typeof j.user.colorIdx === 'number') setColorIdx(j.user.colorIdx);
       if (typeof j.user.pbPassed === 'number') setPbPassed(j.user.pbPassed);
+      if (typeof j.user.setsToPass === 'number') setSetsToPass(j.user.setsToPass);
       if (typeof j.user.streak === 'number') setStreak(j.user.streak);
       const last = j.user.lastReportAt ? new Date(j.user.lastReportAt).getTime() : null;
       const days = last != null ? Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000)) : null;
@@ -210,7 +214,7 @@ export default function Page() {
     // Default to the report kind that fits where the reader is right now.
     const suggested = atLastColor
       ? (atLastLevel ? 'powerbuilder' : 'level_test')
-      : (pbPassed >= PB_SETS_TO_PASS ? 'exit_test' : 'powerbuilder');
+      : (pbPassed >= setsToPass ? 'exit_test' : 'powerbuilder');
     setReportKind(suggested);
     setReportPeriod('weekly');
     setReportPB(1);
@@ -283,7 +287,7 @@ export default function Page() {
       }
     } else {
       // Offline: mirror the same authoritative rules locally so the UI responds.
-      const next = advanceProgress(prev, input);
+      const next = advanceProgress(prev, input, setsToPass);
       setLevelIdx(next.levelIdx);
       setColorIdx(next.colorIdx);
       setPbPassed(next.pbPassed);
@@ -312,9 +316,11 @@ export default function Page() {
     const accentShadow = cur.hex + '73';
 
     const colorsInLevel = cur.colorsInLevel;
-    const setsPct = Math.min(100, (pbPassed / PB_SETS_TO_PASS) * 100);
-    const setsRemaining = Math.max(0, PB_SETS_TO_PASS - pbPassed);
-    const exitReady = pbPassed >= PB_SETS_TO_PASS;
+    const needed = Math.max(0, setsToPass);
+    const testOnly = needed === 0;
+    const setsPct = testOnly ? 100 : Math.min(100, (pbPassed / needed) * 100);
+    const setsRemaining = Math.max(0, needed - pbPassed);
+    const exitReady = pbPassed >= needed;
 
     // What comes next from the current position.
     let nextTarget;
@@ -387,7 +393,7 @@ export default function Page() {
         upColor: i === 0 ? 'transparent' : (i <= colorIdx ? '#d8b8a0' : '#f0e9dc'),
         downColor: i === colorsInLevel - 1 ? 'transparent' : (i < colorIdx ? '#d8b8a0' : '#f0e9dc'),
         sep: i === colorsInLevel - 1 ? 'transparent' : '#f4efe6',
-        statusLabel: done ? 'Cleared' : current ? `${pbPassed}/${PB_SETS_TO_PASS} sets` : 'Locked',
+        statusLabel: done ? 'Cleared' : current ? (testOnly ? 'Test only' : `${pbPassed}/${needed} sets`) : 'Locked',
         statusColor: done ? '#8a8175' : current ? 'var(--accent)' : '#bdb5a6',
       };
     });
@@ -463,13 +469,13 @@ export default function Page() {
       pbCount: reportKind === 'powerbuilder' ? reportPB : 0, score: reportScore, rate: reportRate,
       placementColorIdx: reportKind === 'level_test' ? reportPlacementIdx : undefined,
     };
-    const projected = advanceProgress({ levelIdx, colorIdx, pbPassed }, reportInput);
+    const projected = advanceProgress({ levelIdx, colorIdx, pbPassed }, reportInput, setsToPass);
     const projectedStep = stepInfo(projected.levelIdx, projected.colorIdx);
     const nextLevelColors = levelIdx < LAST_LEVEL ? LEVELS[levelIdx + 1].colors : [];
 
     return {
       cur, accent, accentDark, accentLight, accentTint, accentBorder, accentShadow,
-      colorsInLevel, setsPct, setsRemaining, exitReady, nextTarget, action,
+      colorsInLevel, needed, testOnly, setsPct, setsRemaining, exitReady, nextTarget, action,
       hasReports, weeklyPB, avgScore, avgRate, recentReports,
       levels, levelColors, clearedColors, colorsRemaining, levelsRemaining,
       achievements, earnedCount, achTotal: achDefs.length, totalBadgeXp,
@@ -478,7 +484,7 @@ export default function Page() {
       reportXp: reportXp(reportInput),
       projected, projectedStep, nextLevelColors,
     };
-  }, [levelIdx, colorIdx, pbPassed, streak, reports, notifs, reportKind, reportPeriod, reportPB, reportScore, reportRate, reportPlacementIdx]);
+  }, [levelIdx, colorIdx, pbPassed, setsToPass, streak, reports, notifs, reportKind, reportPeriod, reportPB, reportScore, reportRate, reportPlacementIdx]);
 
   const confetti = useMemo(() => {
     if (!levelUpShown) return [];
@@ -511,12 +517,12 @@ export default function Page() {
   // the server is always the real gate).
   const kindFits = {
     powerbuilder: true,
-    exit_test: !atLastColor && pbPassed >= PB_SETS_TO_PASS,
-    level_test: atLastColor && !atLastLevel && pbPassed >= PB_SETS_TO_PASS,
+    exit_test: !atLastColor && pbPassed >= setsToPass,
+    level_test: atLastColor && !atLastLevel && pbPassed >= setsToPass,
   };
   const kindOptions = [
     { key:'powerbuilder', label:'Power Builder set', sub:'Log stories & activities you read and answered' },
-    { key:'exit_test',    label:'Exit color test',   sub:`Move to the next color after ${PB_SETS_TO_PASS} passing sets` },
+    { key:'exit_test',    label:'Exit color test',   sub: setsToPass > 0 ? `Move to the next color after ${setsToPass} passing sets` : 'Only a test is needed to move to the next color' },
     { key:'level_test',   label:'Level test',        sub:'End-of-level test that places you in the next level' },
   ];
 
@@ -592,8 +598,8 @@ export default function Page() {
                 </div>
                 <div style={{ marginTop:24 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
-                    <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>Passing sets</div>
-                    <div style={{ fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{pbPassed} <span style={{ color:'#bdb5a6', fontWeight:400 }}>/ {PB_SETS_TO_PASS}</span></div>
+                    <div style={{ fontSize:11, letterSpacing:.8, textTransform:'uppercase', color:'#8a8175', fontWeight:500 }}>{v.testOnly ? 'Advancement' : 'Passing sets'}</div>
+                    <div style={{ fontSize:13, fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{v.testOnly ? 'Test only' : <>{pbPassed} <span style={{ color:'#bdb5a6', fontWeight:400 }}>/ {v.needed}</span></>}</div>
                   </div>
                   <div style={{ height:8, background:'#f4efe6', borderRadius:999, overflow:'hidden', position:'relative' }}>
                     <div style={{ height:'100%', borderRadius:999, background:`linear-gradient(90deg, ${v.cur.hex}, ${v.nextTarget.hex})`, width:`${v.setsPct}%`, transition:'width .8s cubic-bezier(.2,.8,.2,1)', position:'relative', overflow:'hidden' }}>
@@ -601,7 +607,7 @@ export default function Page() {
                     </div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
-                    <div style={{ fontSize:10, color:'#bdb5a6' }}>{PB_SETS_PER_COLOR} sets available in this color</div>
+                    <div style={{ fontSize:10, color:'#bdb5a6' }}>{v.testOnly ? `Pass the test to advance · ${PB_SETS_PER_COLOR} sets available to practice` : `${PB_SETS_PER_COLOR} sets available in this color`}</div>
                   </div>
                   <div style={{ marginTop:12, padding:'10px 12px', borderRadius:12, background: v.action.ready ? 'var(--accent-tint)' : '#f7f3ec', border:`1px solid ${v.action.ready ? 'var(--accent-border)' : '#f0e9dc'}`, display:'flex', alignItems:'center', gap:8 }}>
                     {v.action.ready
@@ -614,7 +620,7 @@ export default function Page() {
                     <div style={{ width:12, height:12, borderRadius:4, background:v.nextTarget.hex }}/>
                     <div style={{ fontSize:11, fontWeight:600 }}>{v.nextTarget.name}</div>
                     <div style={{ flex:1 }}/>
-                    <div style={{ fontSize:11, color:'#8a8175', fontVariantNumeric:'tabular-nums' }}>{v.setsRemaining} {v.setsRemaining === 1 ? 'set' : 'sets'} to go</div>
+                    <div style={{ fontSize:11, color:'#8a8175', fontVariantNumeric:'tabular-nums' }}>{v.testOnly ? 'test to advance' : `${v.setsRemaining} ${v.setsRemaining === 1 ? 'set' : 'sets'} to go`}</div>
                   </div>
                 </div>
               </div>
@@ -1038,7 +1044,7 @@ export default function Page() {
                 {reportStep === 1 && (
                   <div style={{ padding:'18px 20px 8px', animation:'sra-fadeIn .3s' }}>
                     <div style={{ fontSize:12, color:'#8a8175', marginBottom:12, lineHeight:1.5 }}>
-                      Logging for <strong style={{ color:'#1a1a1a' }}>{v.cur.name}</strong> ({v.cur.levelCode}) · {pbPassed}/{PB_SETS_TO_PASS} passing sets done.
+                      Logging for <strong style={{ color:'#1a1a1a' }}>{v.cur.name}</strong> ({v.cur.levelCode}) · {v.testOnly ? 'test-only advancement' : `${pbPassed}/${v.needed} passing sets done`}.
                     </div>
                     {kindOptions.map(k => {
                       const selected = reportKind === k.key;
@@ -1095,9 +1101,11 @@ export default function Page() {
                           {reportKind === 'exit_test' ? 'Exit color test' : 'Level test'}
                         </div>
                         <div style={{ fontSize:11, color:'var(--accent-dark)', opacity:.85, marginTop:3, lineHeight:1.5 }}>
-                          {pbPassed >= PB_SETS_TO_PASS
-                            ? `You've done your ${PB_SETS_TO_PASS} passing sets — a passing score here advances you.`
-                            : `You still need ${PB_SETS_TO_PASS - pbPassed} more passing set${PB_SETS_TO_PASS - pbPassed === 1 ? '' : 's'} before this counts.`}
+                          {v.testOnly
+                            ? 'Your rule is test-only — a passing score here advances you.'
+                            : pbPassed >= setsToPass
+                              ? `You've done your ${setsToPass} passing sets — a passing score here advances you.`
+                              : `You still need ${setsToPass - pbPassed} more passing set${setsToPass - pbPassed === 1 ? '' : 's'} before this counts.`}
                         </div>
                       </div>
                     )}
@@ -1178,7 +1186,9 @@ export default function Page() {
                           ? `Level up → ${v.projectedStep.levelCode} · ${v.projectedStep.name}`
                           : v.projected.colorAdvanced
                             ? `Advance → ${v.projectedStep.name}`
-                            : `${v.projected.pbPassed}/${PB_SETS_TO_PASS} sets in ${v.cur.name}`}
+                            : v.testOnly
+                              ? `Take the test to advance from ${v.cur.name}`
+                              : `${v.projected.pbPassed}/${v.needed} sets in ${v.cur.name}`}
                       </div>
                     </div>
                   </div>

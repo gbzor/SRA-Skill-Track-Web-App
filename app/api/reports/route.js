@@ -55,7 +55,7 @@ export async function POST(req) {
   // used for display context and are ignored for progression, so a hostile body
   // can't jump the ladder.
   const progress = { levelIdx: user.levelIdx, colorIdx: user.colorIdx, pbPassed: user.pbPassed };
-  const next = advanceProgress(progress, input);
+  const next = advanceProgress(progress, input, user.setsToPass);
 
   const ops = [
     prisma.report.create({

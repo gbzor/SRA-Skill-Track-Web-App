@@ -6,6 +6,7 @@ ALTER TABLE "User" DROP COLUMN "pbToNext";
 ALTER TABLE "User" ADD COLUMN "levelIdx" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "User" ADD COLUMN "colorIdx" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "User" ADD COLUMN "pbPassed" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN "setsToPass" INTEGER NOT NULL DEFAULT 6;
 
 -- Report: move from a single pb count to kind-based records.
 ALTER TABLE "Report" RENAME COLUMN "pb" TO "pbCount";

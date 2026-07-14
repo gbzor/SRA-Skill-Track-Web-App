@@ -20,7 +20,7 @@ export async function POST(req) {
     return json({ error: 'validation', issues: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, password, name, levelIdx, colorIdx, pbPassed } = parsed.data;
+  const { email, password, name, levelIdx, colorIdx, setsToPass, pbPassed } = parsed.data;
 
   // Don't disclose whether the email exists. Always do constant work,
   // and return the same status on either branch.
@@ -34,6 +34,7 @@ export async function POST(req) {
         name: name ?? null,
         levelIdx,
         colorIdx,
+        setsToPass,
         pbPassed,
       },
       select: { id: true },

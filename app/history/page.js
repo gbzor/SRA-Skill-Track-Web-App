@@ -41,6 +41,7 @@ export default function HistoryPage() {
   const [levelIdx, setLevelIdx] = useState(0);
   const [colorIdx, setColorIdx] = useState(0);
   const [pbPassed, setPbPassed] = useState(0);
+  const [setsToPass, setSetsToPass] = useState(PB_SETS_TO_PASS);
   const [reports, setReports] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -59,6 +60,7 @@ export default function HistoryPage() {
             if (typeof j.user.levelIdx === 'number') setLevelIdx(j.user.levelIdx);
             if (typeof j.user.colorIdx === 'number') setColorIdx(j.user.colorIdx);
             if (typeof j.user.pbPassed === 'number') setPbPassed(j.user.pbPassed);
+            if (typeof j.user.setsToPass === 'number') setSetsToPass(j.user.setsToPass);
           }
         }
         if (repRes.ok) {
@@ -179,7 +181,7 @@ export default function HistoryPage() {
                     <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: 28, lineHeight: 1 }}>{v.cur.name}</div>
                     <div style={{ padding: '3px 8px', background: 'var(--accent-tint)', border: '1px solid var(--accent-border)', borderRadius: 7, fontSize: 11, fontWeight: 700, color: 'var(--accent-dark)' }}>{v.cur.levelCode}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#8a8175', marginTop: 4 }}>{pbPassed}/{PB_SETS_TO_PASS} passing sets · {PB_SETS_PER_COLOR} available</div>
+                  <div style={{ fontSize: 12, color: '#8a8175', marginTop: 4 }}>{setsToPass === 0 ? `Test-only advancement · ${PB_SETS_PER_COLOR} sets available` : `${pbPassed}/${setsToPass} passing sets · ${PB_SETS_PER_COLOR} available`}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
