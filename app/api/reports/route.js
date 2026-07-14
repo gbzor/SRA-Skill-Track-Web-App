@@ -1,7 +1,7 @@
 import { getSessionUser } from '../../../lib/session';
 import { prisma } from '../../../lib/prisma';
 import { ReportSchema } from '../../../lib/validation';
-import { advanceProgress, reportXp, isPassing, stepInfo } from '../../../lib/ladder';
+import { advanceProgress, reportXp, isPassing, stepInfo, LEVELS } from '../../../lib/ladder';
 import { check } from '../../../lib/rate-limit';
 import { json, originOk, readJson } from '../../../lib/http';
 
@@ -57,6 +57,19 @@ export async function POST(req) {
   const progress = { levelIdx: user.levelIdx, colorIdx: user.colorIdx, pbPassed: user.pbPassed };
   const next = advanceProgress(progress, input, user.setsToPass);
 
+  // Record a placement only for a level test taken at the reader's real
+  // last-color position, and clamp it against the *actual* next level — never
+  // the level the client claimed — so the stored row is always self-consistent
+  // with the level it's recorded against.
+  let storedPlacement = null;
+  if (input.kind === 'level_test' && input.placementColorIdx !== undefined) {
+    const here = stepInfo(user.levelIdx, user.colorIdx);
+    if (here && here.isLastColor && !here.isLastLevel) {
+      const nextColors = LEVELS[user.levelIdx + 1].colors.length;
+      storedPlacement = Math.max(0, Math.min(nextColors - 1, input.placementColorIdx));
+    }
+  }
+
   const ops = [
     prisma.report.create({
       data: {
@@ -70,7 +83,7 @@ export async function POST(req) {
         score: input.score,
         rate: input.rate,
         passed,
-        placementColorIdx: input.kind === 'level_test' ? (input.placementColorIdx ?? null) : null,
+        placementColorIdx: storedPlacement,
         xp,
       },
       select: SELECT,
