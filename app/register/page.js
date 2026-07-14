@@ -8,6 +8,7 @@ import { LEVELS, colorName } from '../../lib/ladder';
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
   // New readers start at 1C, first color, no passing sets. A returning reader
   // can record where they actually are.
@@ -32,6 +33,12 @@ export default function Register() {
 
   async function onSubmit(e) {
     e.preventDefault();
+    // Confirm-password is a client-side check: the server only ever receives
+    // one password, so guard here before doing any work.
+    if (password !== confirm) {
+      setErr('Passwords do not match.');
+      return;
+    }
     setBusy(true); setErr('');
     const safeColorIdx = Math.min(colorIdx, colors.length - 1);
     // Test-only means no sets are required (or already cleared).
@@ -80,6 +87,13 @@ export default function Register() {
           <input type="password" required autoComplete="new-password" minLength={12} value={password} onChange={e => setPassword(e.target.value)} style={S.input}/>
         </label>
         <div style={S.hint}>12+ characters, with an uppercase, lowercase, and a digit.</div>
+
+        <label style={S.label}>Confirm password
+          <input type="password" required autoComplete="new-password" minLength={12} value={confirm} onChange={e => setConfirm(e.target.value)} style={S.input}/>
+        </label>
+        {confirm.length > 0 && password !== confirm && (
+          <div style={S.hint}>Passwords don&apos;t match yet.</div>
+        )}
 
         <label style={S.label}>Current SRA level
           <select
