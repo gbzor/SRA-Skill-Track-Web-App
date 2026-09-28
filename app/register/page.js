@@ -27,8 +27,9 @@ export default function Register() {
 
   function onLevelChange(nextLevel) {
     setLevelIdx(nextLevel);
-    // Keep the color index in range for the newly chosen level.
-    if (colorIdx >= LEVELS[nextLevel].colors.length) setColorIdx(0);
+    // Each level has its own color order, so jump to the new level's first
+    // color instead of keeping a stale index — makes the change unmistakable.
+    setColorIdx(0);
   }
 
   async function onSubmit(e) {
@@ -114,20 +115,23 @@ export default function Register() {
         <div style={S.hint}>Everyone starts at 1C. Pick a higher level only if you're already past it.</div>
 
         <label style={S.label}>Current color
+          {/* key=levelIdx remounts the select per level so its options always
+              reflect the chosen level's own color order. */}
           <select
+            key={levelIdx}
             value={Math.min(colorIdx, colors.length - 1)}
             onChange={e => setColorIdx(parseInt(e.target.value, 10))}
             style={S.input}
             required
           >
             {colors.map((c, i) => (
-              <option key={c} value={i}>
+              <option key={`${levelIdx}-${c}`} value={i}>
                 {i + 1}. {colorName(c)}
               </option>
             ))}
           </select>
         </label>
-        <div style={S.hint}>The color you're currently working in.</div>
+        <div style={S.hint}>The color you&apos;re currently working in — this list changes with the level.</div>
 
         <label style={S.label}>How do you move up a color or level?
           <select
